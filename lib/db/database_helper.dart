@@ -23,7 +23,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'edubuddy.db');
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -35,6 +35,9 @@ class DatabaseHelper {
     }
     if (oldVersion < 3) {
       await _seedExtraQuestions(db);
+    }
+    if (oldVersion < 4) {
+      await _seedYetMoreQuestions(db);
     }
   }
 
@@ -289,6 +292,7 @@ class DatabaseHelper {
 
     await _seedMoreQuizzes(db);
     await _seedExtraQuestions(db);
+    await _seedYetMoreQuestions(db);
 
     // Insert storybooks
     final story1Id = await db.insert('storybooks', {
@@ -798,5 +802,192 @@ class DatabaseHelper {
     ]) {
       await db.insert('quiz_questions', q);
     }
+  }
+
+  Future<void> _seedYetMoreQuestions(Database db) async {
+    final quizRows = await db.query('quizzes', orderBy: 'id ASC');
+    for (final quiz in quizRows) {
+      final qId = quiz['id'] as int;
+      final title = quiz['title'] as String;
+      final count = (await db.rawQuery(
+              'SELECT COUNT(*) as c FROM quiz_questions WHERE quiz_id = ?', [qId]))
+          .first['c'] as int;
+      if (count >= 20) continue;
+      for (final q in _moreQFor(qId, title)) {
+        await db.insert('quiz_questions', q);
+      }
+    }
+  }
+
+  List<Map<String, dynamic>> _moreQFor(int id, String title) {
+    if (title.contains('Animal') || title.contains('Kingdom')) {
+      return [
+        {'quiz_id': id, 'question': 'Which animal is the largest on land?', 'question_ms': 'Haiwan manakah yang terbesar di darat?', 'options': 'Hippo|Giraffe|African Elephant|Rhino', 'options_ms': 'Kuda nil|Zirafah|Gajah Afrika|Badak', 'correct_index': 2, 'explanation': 'African elephants are the largest land animals!'},
+        {'quiz_id': id, 'question': 'What is a group of wolves called?', 'question_ms': 'Apakah nama sekumpulan serigala?', 'options': 'Herd|Pack|Flock|Pride', 'options_ms': 'Kawanan|Kumpulan|Kawanan burung|Kumpulan singa', 'correct_index': 1, 'explanation': 'A group of wolves is called a pack!'},
+        {'quiz_id': id, 'question': 'Which animal sleeps standing up?', 'question_ms': 'Haiwan manakah yang tidur dalam keadaan berdiri?', 'options': 'Dog|Horse|Cat|Rabbit', 'options_ms': 'Anjing|Kuda|Kucing|Arnab', 'correct_index': 1, 'explanation': 'Horses can sleep standing up!'},
+        {'quiz_id': id, 'question': 'What covers a fish\'s body?', 'question_ms': 'Apa yang menutupi badan ikan?', 'options': 'Fur|Feathers|Scales|Skin', 'options_ms': 'Bulu|Bulu burung|Sisik|Kulit', 'correct_index': 2, 'explanation': 'Fish are covered in scales!'},
+        {'quiz_id': id, 'question': 'Which is the only bird that can swim but not fly?', 'question_ms': 'Burung manakah yang boleh berenang tetapi tidak boleh terbang?', 'options': 'Duck|Swan|Penguin|Flamingo', 'options_ms': 'Itik|Angsa|Penguin|Flamingo', 'correct_index': 2, 'explanation': 'Penguins swim but cannot fly!'},
+        {'quiz_id': id, 'question': 'What do caterpillars turn into?', 'question_ms': 'Apa yang ulat bulu bertukar menjadi?', 'options': 'Bee|Butterfly|Grasshopper|Moth', 'options_ms': 'Lebah|Kupu-kupu|Belalang|Rama-rama', 'correct_index': 1, 'explanation': 'Caterpillars transform into butterflies!'},
+        {'quiz_id': id, 'question': 'Which animal has the longest neck?', 'question_ms': 'Haiwan manakah yang mempunyai leher paling panjang?', 'options': 'Camel|Ostrich|Giraffe|Flamingo', 'options_ms': 'Unta|Burung unta|Zirafah|Flamingo', 'correct_index': 2, 'explanation': 'Giraffes have the longest neck of all animals!'},
+        {'quiz_id': id, 'question': 'What is the sound a duck makes?', 'question_ms': 'Apakah bunyi yang dibuat itik?', 'options': 'Moo|Quack|Oink|Cluck', 'options_ms': 'Moo|Kwek|Oink|Petok', 'correct_index': 1, 'explanation': 'Ducks quack!'},
+        {'quiz_id': id, 'question': 'Where do polar bears live?', 'question_ms': 'Di manakah beruang kutub tinggal?', 'options': 'Desert|Jungle|Arctic|Ocean', 'options_ms': 'Padang pasir|Hutan|Artik|Lautan', 'correct_index': 2, 'explanation': 'Polar bears live in the Arctic where it is cold!'},
+        {'quiz_id': id, 'question': 'Which animal can change its skin color?', 'question_ms': 'Haiwan manakah yang boleh menukar warna kulitnya?', 'options': 'Lizard|Frog|Chameleon|Snake', 'options_ms': 'Cicak|Katak|Bunglon|Ular', 'correct_index': 2, 'explanation': 'Chameleons can change their color to blend in!'},
+      ];
+    }
+    if (title.contains('Math') || title.contains('Magic')) {
+      return [
+        {'quiz_id': id, 'question': 'What is 4 × 4?', 'question_ms': 'Berapa 4 × 4?', 'options': '12|14|16|18', 'options_ms': '12|14|16|18', 'correct_index': 2, 'explanation': '4 × 4 = 16!'},
+        {'quiz_id': id, 'question': 'What is 30 ÷ 6?', 'question_ms': 'Berapa 30 ÷ 6?', 'options': '4|5|6|7', 'options_ms': '4|5|6|7', 'correct_index': 1, 'explanation': '30 ÷ 6 = 5!'},
+        {'quiz_id': id, 'question': 'What is 12 + 8?', 'question_ms': 'Berapa 12 + 8?', 'options': '18|19|20|21', 'options_ms': '18|19|20|21', 'correct_index': 2, 'explanation': '12 + 8 = 20!'},
+        {'quiz_id': id, 'question': 'What is 25 - 9?', 'question_ms': 'Berapa 25 - 9?', 'options': '14|15|16|17', 'options_ms': '14|15|16|17', 'correct_index': 2, 'explanation': '25 - 9 = 16!'},
+        {'quiz_id': id, 'question': 'Which number is even?', 'question_ms': 'Nombor manakah yang genap?', 'options': '3|7|14|21', 'options_ms': '3|7|14|21', 'correct_index': 2, 'explanation': '14 is even — it can be divided by 2!'},
+        {'quiz_id': id, 'question': 'What is 3 × 7?', 'question_ms': 'Berapa 3 × 7?', 'options': '18|20|21|24', 'options_ms': '18|20|21|24', 'correct_index': 2, 'explanation': '3 × 7 = 21!'},
+        {'quiz_id': id, 'question': 'What is 100 - 45?', 'question_ms': 'Berapa 100 - 45?', 'options': '45|55|65|75', 'options_ms': '45|55|65|75', 'correct_index': 1, 'explanation': '100 - 45 = 55!'},
+        {'quiz_id': id, 'question': 'Which number is odd?', 'question_ms': 'Nombor manakah yang ganjil?', 'options': '10|12|17|20', 'options_ms': '10|12|17|20', 'correct_index': 2, 'explanation': '17 is odd — it cannot be divided evenly by 2!'},
+        {'quiz_id': id, 'question': 'What is 6 × 6?', 'question_ms': 'Berapa 6 × 6?', 'options': '30|34|36|38', 'options_ms': '30|34|36|38', 'correct_index': 2, 'explanation': '6 × 6 = 36!'},
+        {'quiz_id': id, 'question': 'What fraction means one out of two?', 'question_ms': 'Pecahan manakah bermaksud satu daripada dua?', 'options': '1/3|1/4|1/2|2/3', 'options_ms': '1/3|1/4|1/2|2/3', 'correct_index': 2, 'explanation': '1/2 means one out of two — a half!'},
+      ];
+    }
+    if (title.contains('Colors') || title.contains('Colours') || title.contains('Shapes')) {
+      return [
+        {'quiz_id': id, 'question': 'What colour do you get mixing red and blue?', 'question_ms': 'Warna apa yang terhasil dari merah dan biru?', 'options': 'Green|Orange|Purple|Brown', 'options_ms': 'Hijau|Jingga|Ungu|Coklat', 'correct_index': 2, 'explanation': 'Red + Blue = Purple!'},
+        {'quiz_id': id, 'question': 'How many sides does a pentagon have?', 'question_ms': 'Berapa sisi yang dimiliki pentagon?', 'options': '4|5|6|7', 'options_ms': '4|5|6|7', 'correct_index': 1, 'explanation': 'A pentagon has 5 sides!'},
+        {'quiz_id': id, 'question': 'What colour is the ocean?', 'question_ms': 'Apakah warna lautan?', 'options': 'Green|Red|Blue|Yellow', 'options_ms': 'Hijau|Merah|Biru|Kuning', 'correct_index': 2, 'explanation': 'The ocean is blue!'},
+        {'quiz_id': id, 'question': 'What shape has no corners?', 'question_ms': 'Bentuk manakah yang tiada sudut?', 'options': 'Square|Triangle|Circle|Rectangle', 'options_ms': 'Segi empat|Tiga segi|Bulat|Segiempat tepat', 'correct_index': 2, 'explanation': 'A circle has no corners!'},
+        {'quiz_id': id, 'question': 'What colour is a banana?', 'question_ms': 'Apakah warna pisang?', 'options': 'Red|Green|Yellow|Orange', 'options_ms': 'Merah|Hijau|Kuning|Jingga', 'correct_index': 2, 'explanation': 'Ripe bananas are yellow!'},
+        {'quiz_id': id, 'question': 'How many sides does a hexagon have?', 'question_ms': 'Berapa sisi hexagon?', 'options': '5|6|7|8', 'options_ms': '5|6|7|8', 'correct_index': 1, 'explanation': 'A hexagon has 6 sides — like a honeycomb!'},
+        {'quiz_id': id, 'question': 'What colour do you get from mixing all colors of light?', 'question_ms': 'Warna apa yang terhasil dari campuran semua cahaya?', 'options': 'Black|Brown|White|Grey', 'options_ms': 'Hitam|Coklat|Putih|Abu-abu', 'correct_index': 2, 'explanation': 'Mixing all light colours gives white!'},
+        {'quiz_id': id, 'question': 'What shape is a stop sign?', 'question_ms': 'Apakah bentuk tanda berhenti?', 'options': 'Circle|Square|Octagon|Triangle', 'options_ms': 'Bulat|Segi empat|Oktagon|Tiga segi', 'correct_index': 2, 'explanation': 'A stop sign is an octagon — 8 sides!'},
+        {'quiz_id': id, 'question': 'What colour is a fire truck?', 'question_ms': 'Apakah warna trak bomba?', 'options': 'Blue|Yellow|Red|Green', 'options_ms': 'Biru|Kuning|Merah|Hijau', 'correct_index': 2, 'explanation': 'Fire trucks are red!'},
+        {'quiz_id': id, 'question': 'How many colours are in a rainbow?', 'question_ms': 'Berapa warna dalam pelangi?', 'options': '5|6|7|8', 'options_ms': '5|6|7|8', 'correct_index': 2, 'explanation': 'A rainbow has 7 colours: Red, Orange, Yellow, Green, Blue, Indigo, Violet!'},
+      ];
+    }
+    if (title.contains('Space') || title.contains('Explorer')) {
+      return [
+        {'quiz_id': id, 'question': 'Which planet has the most moons?', 'question_ms': 'Planet manakah yang mempunyai bulan paling banyak?', 'options': 'Jupiter|Saturn|Uranus|Neptune', 'options_ms': 'Musytari|Zuhal|Uranus|Neptun', 'correct_index': 1, 'explanation': 'Saturn has over 140 moons!'},
+        {'quiz_id': id, 'question': 'What is the speed of light approximately?', 'question_ms': 'Berapakah kelajuan cahaya?', 'options': '100,000 km/s|200,000 km/s|300,000 km/s|400,000 km/s', 'options_ms': '100,000 km/s|200,000 km/s|300,000 km/s|400,000 km/s', 'correct_index': 2, 'explanation': 'Light travels at about 300,000 km per second!'},
+        {'quiz_id': id, 'question': 'What galaxy do we live in?', 'question_ms': 'Galaksi manakah yang kita diami?', 'options': 'Andromeda|Whirlpool|Milky Way|Triangulum', 'options_ms': 'Andromeda|Whirlpool|Bima Sakti|Triangulum', 'correct_index': 2, 'explanation': 'We live in the Milky Way galaxy!'},
+        {'quiz_id': id, 'question': 'What is a black hole?', 'question_ms': 'Apakah lubang hitam?', 'options': 'A dark planet|A region where gravity is so strong nothing escapes|A dark star|A tunnel in space', 'options_ms': 'Planet gelap|Kawasan gravity sangat kuat|Bintang gelap|Terowong angkasa', 'correct_index': 1, 'explanation': 'A black hole has gravity so strong even light cannot escape!'},
+        {'quiz_id': id, 'question': 'Which planet spins on its side?', 'question_ms': 'Planet manakah yang berputar secara sisi?', 'options': 'Neptune|Saturn|Uranus|Mars', 'options_ms': 'Neptun|Zuhal|Uranus|Marikh', 'correct_index': 2, 'explanation': 'Uranus spins on its side — like a rolling ball!'},
+        {'quiz_id': id, 'question': 'What is the hottest planet in our solar system?', 'question_ms': 'Planet manakah yang paling panas dalam sistem solar kita?', 'options': 'Mercury|Mars|Venus|Jupiter', 'options_ms': 'Utarid|Marikh|Zuhrah|Musytari', 'correct_index': 2, 'explanation': 'Venus is the hottest planet due to its thick atmosphere!'},
+        {'quiz_id': id, 'question': 'How long does light from the Sun take to reach Earth?', 'question_ms': 'Berapa lama cahaya matahari sampai ke Bumi?', 'options': '1 second|8 minutes|1 hour|1 day', 'options_ms': '1 saat|8 minit|1 jam|1 hari', 'correct_index': 1, 'explanation': 'Sunlight takes about 8 minutes to reach Earth!'},
+        {'quiz_id': id, 'question': 'What do we call a rock that falls to Earth from space?', 'question_ms': 'Apa nama batu yang jatuh ke Bumi dari angkasa?', 'options': 'Comet|Asteroid|Meteorite|Satellite', 'options_ms': 'Komet|Asteroid|Meteorit|Satelit', 'correct_index': 2, 'explanation': 'A rock that lands on Earth from space is a meteorite!'},
+        {'quiz_id': id, 'question': 'Which planet is the farthest from the Sun?', 'question_ms': 'Planet manakah yang paling jauh dari Matahari?', 'options': 'Saturn|Uranus|Neptune|Pluto', 'options_ms': 'Zuhal|Uranus|Neptun|Pluto', 'correct_index': 2, 'explanation': 'Neptune is the farthest planet from the Sun!'},
+        {'quiz_id': id, 'question': 'What is the International Space Station used for?', 'question_ms': 'Untuk apa Stesen Angkasa Antarabangsa digunakan?', 'options': 'Tourism|Scientific research|Military base|Satellite launching', 'options_ms': 'Pelancongan|Penyelidikan saintifik|Pangkalan tentera|Pelancaran satelit', 'correct_index': 1, 'explanation': 'The ISS is used for scientific research in space!'},
+      ];
+    }
+    if (title.contains('Bahasa Malaysia') || title.contains('Bahasa Malaysia Fun')) {
+      return [
+        {'quiz_id': id, 'question': 'Apakah "Kata Adjektif" untuk "besar"?', 'question_ms': 'Apakah "Kata Adjektif" untuk "besar"?', 'options': 'Small|Big|Run|Book', 'options_ms': 'Kecil|Besar|Berlari|Buku', 'correct_index': 1, 'explanation': 'Besar = Big, dan ia adalah kata adjektif (sifat)!'},
+        {'quiz_id': id, 'question': 'Siapakah yang menulis "Hikayat Hang Tuah"?', 'question_ms': 'Siapakah yang menulis "Hikayat Hang Tuah"?', 'options': 'Pengarang anonim|Pak Sako|Za\'ba|A. Samad Said', 'options_ms': 'Pengarang anonim|Pak Sako|Za\'ba|A. Samad Said', 'correct_index': 0, 'explanation': 'Hikayat Hang Tuah ditulis oleh pengarang yang tidak diketahui!'},
+        {'quiz_id': id, 'question': 'Apakah "Peribahasa" yang bermaksud bersusah-payah dahulu, bersenang-senang kemudian?', 'question_ms': 'Peribahasa manakah bermaksud berusaha dahulu baru berjaya?', 'options': 'Seperti api dalam sekam|Berakit-rakit ke hulu|Bagai mencurah air ke daun keladi|Seperti katak bawah tempurung', 'options_ms': 'Seperti api dalam sekam|Berakit-rakit ke hulu|Bagai mencurah air ke daun keladi|Seperti katak bawah tempurung', 'correct_index': 1, 'explanation': 'Berakit-rakit ke hulu, berenang-renang ke tepian — susah dahulu, senang kemudian!'},
+        {'quiz_id': id, 'question': 'Apakah imbuhan awalan untuk "pergi" menjadi kata nama?', 'question_ms': 'Imbuhan awalan manakah mengubah kata kerja menjadi kata nama?', 'options': 'ber-|me-|pe-|ter-', 'options_ms': 'ber-|me-|pe-|ter-', 'correct_index': 2, 'explanation': 'Imbuhan "pe-" menghasilkan kata nama, contoh: pelajar!'},
+        {'quiz_id': id, 'question': 'Apakah maksud "Selamat Pagi"?', 'question_ms': 'Apakah maksud "Selamat Pagi"?', 'options': 'Good night|Good afternoon|Good morning|Good evening', 'options_ms': 'Selamat malam|Selamat tengah hari|Selamat pagi|Selamat petang', 'correct_index': 2, 'explanation': 'Selamat Pagi = Good Morning!'},
+        {'quiz_id': id, 'question': 'Manakah ayat yang betul?', 'question_ms': 'Manakah ayat yang betul?', 'options': 'Dia pergi ke sekolah semalam|Dia ke sekolah pergi semalam|Semalam dia ke sekolah pergi|Pergi ke sekolah dia semalam', 'options_ms': 'Dia pergi ke sekolah semalam|Dia ke sekolah pergi semalam|Semalam dia ke sekolah pergi|Pergi ke sekolah dia semalam', 'correct_index': 0, 'explanation': 'Ayat yang betul ialah: Dia pergi ke sekolah semalam!'},
+        {'quiz_id': id, 'question': 'Apakah nama negeri yang dikenali sebagai "Negeri Sembilan"?', 'question_ms': 'Apakah nama negeri yang dikenali sebagai "Negeri Sembilan"?', 'options': 'Melaka|Johor|Negeri Sembilan|Selangor', 'options_ms': 'Melaka|Johor|Negeri Sembilan|Selangor', 'correct_index': 2, 'explanation': 'Negeri Sembilan adalah nama sebuah negeri di Malaysia!'},
+        {'quiz_id': id, 'question': 'Apakah kata ganda untuk "budak"?', 'question_ms': 'Apakah kata ganda untuk "budak"?', 'options': 'Budak-budak|Budak sahaja|Semua budak|Budak banyak', 'options_ms': 'Budak-budak|Budak sahaja|Semua budak|Budak banyak', 'correct_index': 0, 'explanation': 'Kata ganda budak ialah budak-budak!'},
+        {'quiz_id': id, 'question': 'Apakah maksud "Ibu"?', 'question_ms': 'Apakah maksud "Ibu"?', 'options': 'Father|Sister|Mother|Brother', 'options_ms': 'Bapa|Kakak|Ibu|Abang', 'correct_index': 2, 'explanation': 'Ibu = Mother!'},
+        {'quiz_id': id, 'question': 'Berapakah huruf dalam Abjad Bahasa Malaysia?', 'question_ms': 'Berapakah huruf dalam Abjad Bahasa Malaysia?', 'options': '24|25|26|28', 'options_ms': '24|25|26|28', 'correct_index': 2, 'explanation': 'Abjad Bahasa Malaysia mempunyai 26 huruf, sama seperti Bahasa Inggeris!'},
+      ];
+    }
+    if (title.contains('English Grammar') || title.contains('English')) {
+      return [
+        {'quiz_id': id, 'question': 'What is the plural of "child"?', 'question_ms': 'Apakah jamak "child"?', 'options': 'Childs|Childes|Children|Childrens', 'options_ms': 'Childs|Childes|Children|Childrens', 'correct_index': 2, 'explanation': 'The plural of child is children — an irregular plural!'},
+        {'quiz_id': id, 'question': 'Which article goes before "apple"?', 'question_ms': 'Artikel manakah diletakkan sebelum "apple"?', 'options': 'A|An|The|Some', 'options_ms': 'A|An|The|Some', 'correct_index': 1, 'explanation': '"An" is used before vowel sounds — An apple!'},
+        {'quiz_id': id, 'question': 'What is the past tense of "eat"?', 'question_ms': 'Apakah kata lampau "eat"?', 'options': 'Eated|Eats|Eating|Ate', 'options_ms': 'Eated|Eats|Eating|Ate', 'correct_index': 3, 'explanation': 'The past tense of eat is ate!'},
+        {'quiz_id': id, 'question': 'What punctuation ends a question?', 'question_ms': 'Tanda baca manakah mengakhiri soalan?', 'options': 'Full stop|Comma|Question mark|Exclamation mark', 'options_ms': 'Noktah|Koma|Tanda soal|Tanda seru', 'correct_index': 2, 'explanation': 'Questions end with a question mark (?).'},
+        {'quiz_id': id, 'question': 'Which word is an adverb?', 'question_ms': 'Perkataan manakah kata keterangan?', 'options': 'Quickly|Quick|Quicker|Quickness', 'options_ms': 'Dengan cepat|Cepat|Lebih cepat|Kepantasan', 'correct_index': 0, 'explanation': '"Quickly" is an adverb — it describes HOW something is done!'},
+        {'quiz_id': id, 'question': 'Choose the correct sentence:', 'question_ms': 'Pilih ayat yang betul:', 'options': 'She don\'t like cats|She doesn\'t likes cats|She doesn\'t like cats|She not like cats', 'options_ms': 'She don\'t like cats|She doesn\'t likes cats|She doesn\'t like cats|She not like cats', 'correct_index': 2, 'explanation': '"She doesn\'t like cats" is correct!'},
+        {'quiz_id': id, 'question': 'What is the opposite of "hot"?', 'question_ms': 'Apakah antonim "hot"?', 'options': 'Warm|Cool|Cold|Chilly', 'options_ms': 'Suam|Sejuk sikit|Sejuk|Dingin', 'correct_index': 2, 'explanation': 'The opposite of hot is cold!'},
+        {'quiz_id': id, 'question': 'Which is a preposition?', 'question_ms': 'Manakah kata sendi nama?', 'options': 'Run|Happy|Under|Quickly', 'options_ms': 'Berlari|Gembira|Di bawah|Dengan cepat', 'correct_index': 2, 'explanation': '"Under" is a preposition — it shows position!'},
+        {'quiz_id': id, 'question': 'What is the future tense of "I go"?', 'question_ms': 'Apakah masa hadapan "I go"?', 'options': 'I went|I going|I will go|I gone', 'options_ms': 'I went|I going|I will go|I gone', 'correct_index': 2, 'explanation': '"I will go" is the future tense!'},
+        {'quiz_id': id, 'question': 'How many letters are in the English alphabet?', 'question_ms': 'Berapa huruf dalam abjad Inggeris?', 'options': '24|25|26|27', 'options_ms': '24|25|26|27', 'correct_index': 2, 'explanation': 'The English alphabet has 26 letters!'},
+      ];
+    }
+    if (title.contains('Living')) {
+      return [
+        {'quiz_id': id, 'question': 'What gas do plants release during photosynthesis?', 'question_ms': 'Gas apakah yang dilepaskan tumbuhan semasa fotosintesis?', 'options': 'Carbon dioxide|Nitrogen|Oxygen|Hydrogen', 'options_ms': 'Karbon dioksida|Nitrogen|Oksigen|Hidrogen', 'correct_index': 2, 'explanation': 'Plants release oxygen during photosynthesis!'},
+        {'quiz_id': id, 'question': 'What is the life cycle of a butterfly?', 'question_ms': 'Apakah kitaran hidup kupu-kupu?', 'options': 'Egg→Adult→Larva|Egg→Larva→Pupa→Adult|Larva→Egg→Adult|Pupa→Egg→Adult', 'options_ms': 'Telur→Dewasa→Larva|Telur→Larva→Pupa→Dewasa|Larva→Telur→Dewasa|Pupa→Telur→Dewasa', 'correct_index': 1, 'explanation': 'Butterfly: Egg → Caterpillar (Larva) → Chrysalis (Pupa) → Butterfly!'},
+        {'quiz_id': id, 'question': 'Which part of a plant absorbs water from the soil?', 'question_ms': 'Bahagian tumbuhan manakah yang menyerap air dari tanah?', 'options': 'Leaves|Stem|Roots|Flower', 'options_ms': 'Daun|Batang|Akar|Bunga', 'correct_index': 2, 'explanation': 'Roots absorb water and nutrients from the soil!'},
+        {'quiz_id': id, 'question': 'What is an animal that eats both plants and animals?', 'question_ms': 'Apakah haiwan yang makan tumbuhan dan haiwan?', 'options': 'Herbivore|Carnivore|Omnivore|Predator', 'options_ms': 'Herbivor|Karnivor|Omnivor|Predator', 'correct_index': 2, 'explanation': 'Omnivores eat both plants and animals — like humans!'},
+        {'quiz_id': id, 'question': 'What do we call animals that are active at night?', 'question_ms': 'Apa nama haiwan yang aktif pada waktu malam?', 'options': 'Diurnal|Nocturnal|Aquatic|Terrestrial', 'options_ms': 'Diurnal|Nokturnal|Akuatik|Terestrial', 'correct_index': 1, 'explanation': 'Nocturnal animals are active at night, like owls and bats!'},
+        {'quiz_id': id, 'question': 'How do fish breathe underwater?', 'question_ms': 'Bagaimana ikan bernafas di dalam air?', 'options': 'Lungs|Skin|Gills|Nose', 'options_ms': 'Paru-paru|Kulit|Insang|Hidung', 'correct_index': 2, 'explanation': 'Fish breathe through gills that extract oxygen from water!'},
+        {'quiz_id': id, 'question': 'What is the process where a snake sheds its skin called?', 'question_ms': 'Apakah proses ular mengganti kulitnya?', 'options': 'Hibernation|Migration|Moulting|Metamorphosis', 'options_ms': 'Hibernasi|Migrasi|Melungsur|Metamorfosis', 'correct_index': 2, 'explanation': 'Snakes shed their skin through a process called moulting!'},
+        {'quiz_id': id, 'question': 'What is a group of fish called?', 'question_ms': 'Apakah nama sekumpulan ikan?', 'options': 'Herd|Flock|School|Pack', 'options_ms': 'Kawanan|Kelompok burung|Kawanan ikan|Kumpulan serigala', 'correct_index': 2, 'explanation': 'A group of fish is called a school!'},
+        {'quiz_id': id, 'question': 'Which animal goes through complete metamorphosis?', 'question_ms': 'Haiwan manakah yang melalui metamorfosis lengkap?', 'options': 'Dog|Frog|Grasshopper|Spider', 'options_ms': 'Anjing|Katak|Belalang|Labah-labah', 'correct_index': 1, 'explanation': 'Frogs go through metamorphosis: egg → tadpole → frog!'},
+        {'quiz_id': id, 'question': 'What do we call the place where an animal naturally lives?', 'question_ms': 'Apakah nama tempat di mana haiwan tinggal secara semula jadi?', 'options': 'Zoo|Farm|Habitat|Shelter', 'options_ms': 'Zoo|Ladang|Habitat|Tempat perlindungan', 'correct_index': 2, 'explanation': 'A habitat is the natural home of an animal!'},
+      ];
+    }
+    if (title.contains('Human') || title.contains('Body')) {
+      return [
+        {'quiz_id': id, 'question': 'Which vitamin does sunlight give us?', 'question_ms': 'Vitamin manakah yang diberikan cahaya matahari?', 'options': 'Vitamin A|Vitamin B|Vitamin C|Vitamin D', 'options_ms': 'Vitamin A|Vitamin B|Vitamin C|Vitamin D', 'correct_index': 3, 'explanation': 'Sunlight helps our body make Vitamin D!'},
+        {'quiz_id': id, 'question': 'What is the largest organ in the human body?', 'question_ms': 'Apakah organ terbesar dalam badan manusia?', 'options': 'Heart|Liver|Skin|Lungs', 'options_ms': 'Jantung|Hati|Kulit|Paru-paru', 'correct_index': 2, 'explanation': 'The skin is the largest organ of the body!'},
+        {'quiz_id': id, 'question': 'How many chambers does the human heart have?', 'question_ms': 'Berapa ruang yang dimiliki jantung manusia?', 'options': '2|3|4|5', 'options_ms': '2|3|4|5', 'correct_index': 2, 'explanation': 'The human heart has 4 chambers!'},
+        {'quiz_id': id, 'question': 'What is the main function of the kidneys?', 'question_ms': 'Apakah fungsi utama buah pinggang?', 'options': 'Pump blood|Filter blood|Digest food|Store energy', 'options_ms': 'Pam darah|Tapis darah|Hadam makanan|Simpan tenaga', 'correct_index': 1, 'explanation': 'Kidneys filter waste from the blood to make urine!'},
+        {'quiz_id': id, 'question': 'Which body part controls all other organs?', 'question_ms': 'Bahagian badan manakah yang mengawal semua organ lain?', 'options': 'Heart|Lungs|Brain|Stomach', 'options_ms': 'Jantung|Paru-paru|Otak|Perut', 'correct_index': 2, 'explanation': 'The brain controls the entire body!'},
+        {'quiz_id': id, 'question': 'How many litres of blood does an adult have?', 'question_ms': 'Berapa liter darah yang dimiliki orang dewasa?', 'options': '3-4 litres|5-6 litres|7-8 litres|9-10 litres', 'options_ms': '3-4 liter|5-6 liter|7-8 liter|9-10 liter', 'correct_index': 1, 'explanation': 'An adult has about 5-6 litres of blood!'},
+        {'quiz_id': id, 'question': 'What is the smallest bone in the human body?', 'question_ms': 'Apakah tulang terkecil dalam tubuh manusia?', 'options': 'Finger bone|Toe bone|Stirrup (in ear)|Nose bone', 'options_ms': 'Tulang jari|Tulang ibu jari kaki|Stirrup (dalam telinga)|Tulang hidung', 'correct_index': 2, 'explanation': 'The stirrup in the ear is the smallest bone in the body!'},
+        {'quiz_id': id, 'question': 'Which body system fights germs and diseases?', 'question_ms': 'Sistem badan manakah yang melawan kuman dan penyakit?', 'options': 'Digestive|Respiratory|Immune|Skeletal', 'options_ms': 'Penghadaman|Pernafasan|Imun|Rangka', 'correct_index': 2, 'explanation': 'The immune system protects us from germs and illness!'},
+        {'quiz_id': id, 'question': 'How long is the small intestine in an adult?', 'question_ms': 'Berapa panjang usus kecil orang dewasa?', 'options': '2-3 metres|4-5 metres|6-7 metres|8-9 metres', 'options_ms': '2-3 meter|4-5 meter|6-7 meter|8-9 meter', 'correct_index': 2, 'explanation': 'The small intestine is about 6-7 metres long!'},
+        {'quiz_id': id, 'question': 'What gives our blood its red color?', 'question_ms': 'Apa yang memberikan darah warna merah?', 'options': 'White blood cells|Platelets|Haemoglobin|Plasma', 'options_ms': 'Sel darah putih|Platelet|Haemoglobin|Plasma', 'correct_index': 2, 'explanation': 'Haemoglobin in red blood cells gives blood its red colour!'},
+      ];
+    }
+    if (title.contains('Fruit') || title.contains('Food')) {
+      return [
+        {'quiz_id': id, 'question': 'Which fruit is called the "King of Fruits"?', 'question_ms': 'Buah manakah dipanggil "Raja Buah-buahan"?', 'options': 'Mango|Jackfruit|Durian|Papaya', 'options_ms': 'Mangga|Nangka|Durian|Betik', 'correct_index': 2, 'explanation': 'Durian is called the King of Fruits in Southeast Asia!'},
+        {'quiz_id': id, 'question': 'Which food group gives us protein?', 'question_ms': 'Kumpulan makanan manakah yang memberikan protein?', 'options': 'Rice and bread|Fruits|Fish and eggs|Sweets', 'options_ms': 'Nasi dan roti|Buah-buahan|Ikan dan telur|Gula-gula', 'correct_index': 2, 'explanation': 'Fish, eggs, and meat give us protein to build muscles!'},
+        {'quiz_id': id, 'question': 'What is the main ingredient of nasi lemak?', 'question_ms': 'Apakah bahan utama nasi lemak?', 'options': 'Yellow rice|Rice cooked in coconut milk|Fried rice|Brown rice', 'options_ms': 'Nasi kuning|Nasi masak dengan santan|Nasi goreng|Nasi perang', 'correct_index': 1, 'explanation': 'Nasi Lemak is rice cooked in coconut milk — a Malaysian favourite!'},
+        {'quiz_id': id, 'question': 'Which fruit is highest in Vitamin C?', 'question_ms': 'Buah manakah yang paling tinggi Vitamin C?', 'options': 'Apple|Banana|Orange|Mango', 'options_ms': 'Epal|Pisang|Oren|Mangga', 'correct_index': 2, 'explanation': 'Oranges are very rich in Vitamin C!'},
+        {'quiz_id': id, 'question': 'How many meals should a child eat daily?', 'question_ms': 'Berapa kali seorang kanak-kanak perlu makan sehari?', 'options': '1|2|3|5', 'options_ms': '1|2|3|5', 'correct_index': 2, 'explanation': 'Children should eat 3 main meals a day plus healthy snacks!'},
+        {'quiz_id': id, 'question': 'What nutrient do carrots give us for good eyesight?', 'question_ms': 'Nutrien apakah dalam lobak merah yang baik untuk penglihatan?', 'options': 'Vitamin C|Vitamin D|Vitamin A|Iron', 'options_ms': 'Vitamin C|Vitamin D|Vitamin A|Zat besi', 'correct_index': 2, 'explanation': 'Carrots are rich in Vitamin A which helps our eyesight!'},
+        {'quiz_id': id, 'question': 'Which food is made from fermented soybeans?', 'question_ms': 'Makanan manakah dibuat daripada kacang soya yang ditapai?', 'options': 'Butter|Tofu|Tempeh|Cheese', 'options_ms': 'Mentega|Tauhu|Tempe|Keju', 'correct_index': 2, 'explanation': 'Tempeh is made from fermented soybeans — popular in Malaysia!'},
+        {'quiz_id': id, 'question': 'Which drink is best for a child\'s health?', 'question_ms': 'Minuman manakah yang terbaik untuk kesihatan kanak-kanak?', 'options': 'Soda|Fruit juice with sugar|Plain water|Energy drink', 'options_ms': 'Soda|Jus buah dengan gula|Air kosong|Minuman tenaga', 'correct_index': 2, 'explanation': 'Plain water is the healthiest drink for children!'},
+        {'quiz_id': id, 'question': 'What is the outer covering of a fruit called?', 'question_ms': 'Apakah nama lapisan luar buah?', 'options': 'Flesh|Seed|Skin/Peel|Core', 'options_ms': 'Isi|Biji|Kulit|Teras', 'correct_index': 2, 'explanation': 'The outer covering of a fruit is called the skin or peel!'},
+        {'quiz_id': id, 'question': 'Which part of the egg is yellow?', 'question_ms': 'Bahagian telur manakah yang berwarna kuning?', 'options': 'Shell|White|Yolk|Membrane', 'options_ms': 'Cangkerang|Putih telur|Kuning telur|Membran', 'correct_index': 2, 'explanation': 'The yellow part of an egg is called the yolk!'},
+      ];
+    }
+    if (title.contains('Music')) {
+      return [
+        {'quiz_id': id, 'question': 'Which Malaysian traditional instrument uses a bow?', 'question_ms': 'Alat muzik tradisional Malaysia manakah menggunakan busur?', 'options': 'Rebana|Kompang|Rebab|Gamelan', 'options_ms': 'Rebana|Kompang|Rebab|Gamelan', 'correct_index': 2, 'explanation': 'The Rebab is a traditional string instrument played with a bow!'},
+        {'quiz_id': id, 'question': 'What is the name for music that has no words?', 'question_ms': 'Apakah nama muzik yang tiada kata-kata?', 'options': 'Opera|Instrumental|Choral|Vocal', 'options_ms': 'Opera|Instrumental|Koral|Vokal', 'correct_index': 1, 'explanation': 'Instrumental music has no lyrics — only instruments!'},
+        {'quiz_id': id, 'question': 'How many notes are in a musical scale?', 'question_ms': 'Berapa nota dalam skala muzik?', 'options': '5|6|7|8', 'options_ms': '5|6|7|8', 'correct_index': 2, 'explanation': 'A musical scale has 7 notes: Do Re Mi Fa Sol La Ti!'},
+        {'quiz_id': id, 'question': 'What does "forte" mean in music?', 'question_ms': 'Apakah maksud "forte" dalam muzik?', 'options': 'Slow|Fast|Loud|Soft', 'options_ms': 'Perlahan|Cepat|Kuat|Lembut', 'correct_index': 2, 'explanation': 'Forte means play LOUD in music!'},
+        {'quiz_id': id, 'question': 'Which family does the violin belong to?', 'question_ms': 'Kumpulan manakah yang dimiliki biola?', 'options': 'Wind|Percussion|String|Brass', 'options_ms': 'Tiupan|Perkusi|Gesek|Tembaga', 'correct_index': 2, 'explanation': 'The violin is a string instrument!'},
+        {'quiz_id': id, 'question': 'What is a musical note that lasts 4 beats called?', 'question_ms': 'Apakah nama nota muzik yang berlangsung 4 ketukan?', 'options': 'Half note|Quarter note|Whole note|Eighth note', 'options_ms': 'Nota separuh|Nota suku|Nota penuh|Nota lapan', 'correct_index': 2, 'explanation': 'A whole note lasts 4 beats!'},
+        {'quiz_id': id, 'question': 'Which percussion instrument is shaped like a circle and hit with hands?', 'question_ms': 'Alat perkusi manakah berbentuk bulat dan dipukul dengan tangan?', 'options': 'Triangle|Tambourine|Xylophone|Marimba', 'options_ms': 'Tiga segi|Tamborin|Xilofon|Marimba', 'correct_index': 1, 'explanation': 'A tambourine is hit with hands and shaken!'},
+        {'quiz_id': id, 'question': 'What does "piano" mean in music?', 'question_ms': 'Apakah maksud "piano" dalam muzik (bukan alat muzik)?', 'options': 'Loud|Fast|Soft|Slow', 'options_ms': 'Kuat|Cepat|Lembut|Perlahan', 'correct_index': 2, 'explanation': '"Piano" as a musical direction means play softly!'},
+        {'quiz_id': id, 'question': 'Who composed the famous "Für Elise"?', 'question_ms': 'Siapa yang mengarang "Für Elise" yang terkenal?', 'options': 'Mozart|Chopin|Beethoven|Bach', 'options_ms': 'Mozart|Chopin|Beethoven|Bach', 'correct_index': 2, 'explanation': 'Für Elise was composed by Ludwig van Beethoven!'},
+        {'quiz_id': id, 'question': 'What is a group of singers performing together called?', 'question_ms': 'Apakah nama kumpulan penyanyi yang tampil bersama?', 'options': 'Band|Orchestra|Choir|Ensemble', 'options_ms': 'Kumpulan muzik|Orkestra|Koir|Ensemble', 'correct_index': 2, 'explanation': 'A group of singers performing together is called a choir!'},
+      ];
+    }
+    if (title.contains('Arts') || title.contains('Craft')) {
+      return [
+        {'quiz_id': id, 'question': 'Who painted the Mona Lisa?', 'question_ms': 'Siapakah yang melukis Mona Lisa?', 'options': 'Picasso|Michelangelo|Leonardo da Vinci|Rembrandt', 'options_ms': 'Picasso|Michelangelo|Leonardo da Vinci|Rembrandt', 'correct_index': 2, 'explanation': 'The Mona Lisa was painted by Leonardo da Vinci!'},
+        {'quiz_id': id, 'question': 'What is the art of folding paper called?', 'question_ms': 'Apakah nama seni melipat kertas?', 'options': 'Papier-mâché|Origami|Collage|Decoupage', 'options_ms': 'Papier-mâché|Origami|Kolaj|Decoupage', 'correct_index': 1, 'explanation': 'Origami is the Japanese art of paper folding!'},
+        {'quiz_id': id, 'question': 'What tool do artists use to apply paint on canvas?', 'question_ms': 'Alat apakah yang digunakan pelukis untuk meletak cat di kanvas?', 'options': 'Pencil|Brush|Pen|Marker', 'options_ms': 'Pensel|Berus|Pen|Marker', 'correct_index': 1, 'explanation': 'Artists use brushes to apply paint on canvas!'},
+        {'quiz_id': id, 'question': 'What is a self-portrait?', 'question_ms': 'Apakah potret diri?', 'options': 'A painting of a landscape|A painting of an artist by themselves|A group photo|A painting of animals', 'options_ms': 'Lukisan pemandangan|Lukisan oleh pelukis untuk diri sendiri|Foto kumpulan|Lukisan haiwan', 'correct_index': 1, 'explanation': 'A self-portrait is when an artist paints or draws themselves!'},
+        {'quiz_id': id, 'question': 'Which colour is NOT a secondary colour?', 'question_ms': 'Warna manakah yang BUKAN warna sekunder?', 'options': 'Orange|Green|Purple|Blue', 'options_ms': 'Jingga|Hijau|Ungu|Biru', 'correct_index': 3, 'explanation': 'Blue is a PRIMARY colour. Secondary colours are Orange, Green, Purple!'},
+        {'quiz_id': id, 'question': 'What is a sculpture made from clay before it is fired?', 'question_ms': 'Apakah arca yang dibuat dari tanah liat sebelum dibakar?', 'options': 'Marble|Bronze|Greenware/Pottery|Mosaic', 'options_ms': 'Marmar|Gangsa|Tembikar|Mozek', 'correct_index': 2, 'explanation': 'Unfired clay objects are called greenware or pottery!'},
+        {'quiz_id': id, 'question': 'What type of art is made by sticking pieces of paper/fabric together?', 'question_ms': 'Jenis seni apakah yang dibuat dengan melekat kepingan kertas/fabrik?', 'options': 'Mosaic|Collage|Fresco|Etching', 'options_ms': 'Mozek|Kolaj|Fresko|Ukiran', 'correct_index': 1, 'explanation': 'Collage is art made by sticking different materials together!'},
+        {'quiz_id': id, 'question': 'How many basic colour mixing rules are there?', 'question_ms': 'Berapa peraturan asas percampuran warna?', 'options': '1|2|3|4', 'options_ms': '1|2|3|4', 'correct_index': 2, 'explanation': 'There are 3 types: primary, secondary, and tertiary colours!'},
+        {'quiz_id': id, 'question': 'What country is origami originally from?', 'question_ms': 'Dari negara manakah origami berasal?', 'options': 'China|Korea|Japan|Vietnam', 'options_ms': 'China|Korea|Jepun|Vietnam', 'correct_index': 2, 'explanation': 'Origami originated in Japan!'},
+        {'quiz_id': id, 'question': 'What is the traditional Malaysian art of wax-resist dyeing on fabric?', 'question_ms': 'Apakah seni tradisional Malaysia menggunakan lilin pada kain?', 'options': 'Songket|Batik|Tenun|Pelikat', 'options_ms': 'Songket|Batik|Tenun|Pelikat', 'correct_index': 1, 'explanation': 'Batik is Malaysia\'s famous traditional fabric art using wax and dye!'},
+      ];
+    }
+    if (title.contains('Weather') || title.contains('Nature')) {
+      return [
+        {'quiz_id': id, 'question': 'What is the water cycle?', 'question_ms': 'Apakah kitaran air?', 'options': 'Rain falling only|Water moving from ocean to sky and back|Water staying in rivers|Ice melting only', 'options_ms': 'Hujan sahaja|Air bergerak dari laut ke langit dan kembali|Air kekal di sungai|Ais cair sahaja', 'correct_index': 1, 'explanation': 'The water cycle is water evaporating, forming clouds, then falling as rain!'},
+        {'quiz_id': id, 'question': 'What type of cloud brings thunderstorms?', 'question_ms': 'Jenis awan manakah yang membawa ribut petir?', 'options': 'Cirrus|Cumulus|Cumulonimbus|Stratus', 'options_ms': 'Cirrus|Kumulus|Kumulonimbus|Stratus', 'correct_index': 2, 'explanation': 'Cumulonimbus clouds cause thunderstorms!'},
+        {'quiz_id': id, 'question': 'What is the Beaufort scale used to measure?', 'question_ms': 'Apakah skala Beaufort digunakan untuk mengukur?', 'options': 'Rainfall|Temperature|Wind speed|Humidity', 'options_ms': 'Hujan|Suhu|Kelajuan angin|Kelembapan', 'correct_index': 2, 'explanation': 'The Beaufort scale measures wind speed!'},
+        {'quiz_id': id, 'question': 'What is Malaysia\'s weather like all year?', 'question_ms': 'Bagaimanakah cuaca Malaysia sepanjang tahun?', 'options': 'Cold winters|Four seasons|Hot and humid tropical|Dry desert', 'options_ms': 'Musim sejuk|Empat musim|Panas dan lembap tropika|Padang pasir kering', 'correct_index': 2, 'explanation': 'Malaysia has hot and humid tropical weather throughout the year!'},
+        {'quiz_id': id, 'question': 'What is formed when water vapour cools and condenses?', 'question_ms': 'Apakah yang terbentuk apabila wap air sejuk dan mengembun?', 'options': 'Wind|Clouds|Tornado|Thunder', 'options_ms': 'Angin|Awan|Tornado|Guruh', 'correct_index': 1, 'explanation': 'Clouds form when water vapour cools and condenses!'},
+        {'quiz_id': id, 'question': 'Which season in Malaysia brings the most rainfall?', 'question_ms': 'Musim manakah di Malaysia yang membawa hujan paling banyak?', 'options': 'March to May|June to August|September to November|November to March', 'options_ms': 'Mac hingga Mei|Jun hingga Ogos|September hingga November|November hingga Mac', 'correct_index': 3, 'explanation': 'The Northeast Monsoon (Nov-Mar) brings the most rain to Malaysia!'},
+        {'quiz_id': id, 'question': 'What causes thunder during a storm?', 'question_ms': 'Apakah yang menyebabkan guruh semasa ribut?', 'options': 'Wind|Rain|Sound from lightning|Clouds colliding', 'options_ms': 'Angin|Hujan|Bunyi daripada kilat|Awan berlanggar', 'correct_index': 2, 'explanation': 'Thunder is the sound caused by the rapid expansion of air heated by lightning!'},
+        {'quiz_id': id, 'question': 'What is the name of the line that divides Earth into North and South?', 'question_ms': 'Apakah nama garisan yang membahagikan Bumi kepada Utara dan Selatan?', 'options': 'Prime Meridian|Arctic Circle|Equator|Tropic of Cancer', 'options_ms': 'Meridian Utama|Bulatan Artik|Khatulistiwa|Tropik Kanser', 'correct_index': 2, 'explanation': 'The Equator divides Earth into Northern and Southern Hemispheres — Malaysia is near the Equator!'},
+        {'quiz_id': id, 'question': 'What instrument measures wind direction?', 'question_ms': 'Alat apakah yang mengukur arah angin?', 'options': 'Barometer|Thermometer|Wind vane|Hygrometer', 'options_ms': 'Barometer|Termometer|Penunjuk arah angin|Higrometer', 'correct_index': 2, 'explanation': 'A wind vane (weather vane) shows which direction the wind blows!'},
+        {'quiz_id': id, 'question': 'What percentage of Earth\'s surface is covered by water?', 'question_ms': 'Berapa peratus permukaan Bumi yang diliputi air?', 'options': '50%|60%|71%|80%', 'options_ms': '50%|60%|71%|80%', 'correct_index': 2, 'explanation': 'About 71% of Earth\'s surface is covered by water!'},
+      ];
+    }
+    return [];
   }
 }

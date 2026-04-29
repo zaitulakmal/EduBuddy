@@ -4,6 +4,7 @@ import '../../models/storybook_model.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/story_scene.dart';
 
 class StoryReaderScreen extends StatefulWidget {
   final StorybookModel book;
@@ -178,7 +179,10 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                 controller: _pageCtrl,
                 onPageChanged: (i) => setState(() => _currentPage = i),
                 itemCount: _pages.length,
-                itemBuilder: (_, i) => _StoryPage(page: _pages[i]),
+                itemBuilder: (_, i) => _StoryPage(
+                  page: _pages[i],
+                  storybookId: widget.book.id!,
+                ),
               ),
             ),
 
@@ -239,7 +243,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primary.withOpacity(0.4),
+                              color: AppColors.primary.withValues(alpha: 0.4),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -272,60 +276,60 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 
 class _StoryPage extends StatelessWidget {
   final StorybookPage page;
+  final int storybookId;
 
-  const _StoryPage({required this.page});
+  const _StoryPage({required this.page, required this.storybookId});
 
   @override
   Widget build(BuildContext context) {
-    Color bgColor;
-    try {
-      bgColor = Color(int.parse(page.backgroundColor.replaceFirst('#', '0xFF')));
-    } catch (_) {
-      bgColor = const Color(0xFF1a1a2e);
-    }
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: bgColor.withOpacity(0.5),
-              blurRadius: 20,
-              spreadRadius: 2,
-            ),
-          ],
-        ),
-        child: Column(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Stack(
           children: [
-            Expanded(
-              flex: 3,
-              child: Center(
-                child: Text(
-                  page.backgroundEmoji,
-                  style: const TextStyle(fontSize: 100),
-                ),
+            // Custom illustrated background
+            Positioned.fill(
+              child: StorySceneWidget(
+                storybookId: storybookId,
+                pageNumber: page.pageNumber,
               ),
             ),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.3),
-                borderRadius:
-                    const BorderRadius.vertical(bottom: Radius.circular(28)),
-              ),
-              child: Text(
-                page.text,
-                style: const TextStyle(
-                  fontSize: 17,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  height: 1.6,
+            // Story text overlay at the bottom
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.55),
+                      Colors.black.withValues(alpha: 0.75),
+                    ],
+                  ),
                 ),
-                textAlign: TextAlign.center,
+                child: Text(
+                  page.text,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    height: 1.6,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black54,
+                        blurRadius: 4,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
           ],
