@@ -23,7 +23,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), 'edubuddy.db');
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -38,6 +38,13 @@ class DatabaseHelper {
     }
     if (oldVersion < 4) {
       await _seedYetMoreQuestions(db);
+    }
+    if (oldVersion < 5) {
+      try {
+        await db.execute(
+            'ALTER TABLE quiz_questions ADD COLUMN emoji TEXT DEFAULT ""');
+      } catch (_) {}
+      await _seedMalaysiaSyllabusQuizzes(db);
     }
   }
 
@@ -94,6 +101,7 @@ class DatabaseHelper {
         options_ms TEXT NOT NULL,
         correct_index INTEGER NOT NULL,
         explanation TEXT DEFAULT '',
+        emoji TEXT DEFAULT '',
         FOREIGN KEY (quiz_id) REFERENCES quizzes(id)
       )
     ''');
@@ -293,6 +301,7 @@ class DatabaseHelper {
     await _seedMoreQuizzes(db);
     await _seedExtraQuestions(db);
     await _seedYetMoreQuestions(db);
+    await _seedMalaysiaSyllabusQuizzes(db);
 
     // Insert storybooks
     final story1Id = await db.insert('storybooks', {
@@ -989,5 +998,391 @@ class DatabaseHelper {
       ];
     }
     return [];
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  //  Malaysia KSSR Syllabus Quizzes  (version 5 seed)
+  // ══════════════════════════════════════════════════════════════════
+
+  Future<void> _seedMalaysiaSyllabusQuizzes(Database db) async {
+    final existing = await db.rawQuery(
+        "SELECT COUNT(*) as c FROM quizzes WHERE title LIKE 'BM Tahun%' OR title LIKE 'Matematik Tahun%' OR title LIKE 'Sains Tahun%' OR title LIKE 'English Year%' OR title LIKE 'Pendidikan Moral%' OR title LIKE 'Sejarah Tahun%'");
+    if ((existing.first['c'] as int) > 0) return;
+
+    final langRows = await db.query('categories', where: 'name = ?', whereArgs: ['Language']);
+    final mathRows = await db.query('categories', where: 'name = ?', whereArgs: ['Math']);
+    final sciRows  = await db.query('categories', where: 'name = ?', whereArgs: ['Science']);
+    if (langRows.isEmpty || mathRows.isEmpty || sciRows.isEmpty) return;
+    final langId = langRows.first['id'] as int;
+    final mathId = mathRows.first['id'] as int;
+    final sciId  = sciRows.first['id']  as int;
+
+    Future<int> addQuiz(String title, String emoji, int catId) =>
+        db.insert('quizzes', {
+          'title': title, 'title_ms': title, 'category_id': catId,
+          'age_group': 'primary', 'emoji': emoji, 'high_score': 0, 'is_completed': 0,
+        });
+
+    Map<String, dynamic> mq(int qid, String question, String opts, int ci, String emoji) => {
+      'quiz_id': qid, 'question': question, 'question_ms': question,
+      'options': opts, 'options_ms': opts, 'correct_index': ci,
+      'explanation': '', 'emoji': emoji,
+    };
+
+    Future<void> addQs(int qid, List<Map<String, dynamic>> qs) async {
+      for (final q in qs) {
+        await db.insert('quiz_questions', q);
+      }
+    }
+
+    // ── 1. BM Tahun 1: Kata Nama ─────────────────────────────────────
+    final bm1 = await addQuiz('BM Tahun 1: Kata Nama', '📝', langId);
+    await addQs(bm1, [
+      mq(bm1, 'Manakah kata nama am?', 'Meja|Berlari|Cantik|Dan', 0, '📚'),
+      mq(bm1, 'Manakah kata nama khas?', 'pokok|sungai|Kuala Lumpur|buku', 2, '🏙️'),
+      mq(bm1, 'Berapa suku kata dalam "ba-ju"?', '1|2|3|4', 1, '👕'),
+      mq(bm1, 'Berapa suku kata dalam "se-ko-lah"?', '1|2|3|4', 2, '🏫'),
+      mq(bm1, 'Pilih kata nama haiwan:', 'Berlari|Besar|Arnab|Merah', 2, '🐰'),
+      mq(bm1, '"Ibu memasak ___ di dapur." Pilih kata nama:', 'cantik|lauk|berlari|cepat', 1, '🍳'),
+      mq(bm1, 'Manakah BUKAN kata nama?', 'Kerusi|Berlari|Pensel|Meja', 1, '✏️'),
+      mq(bm1, 'Pilih tempat kita belajar:', 'Hospital|Masjid|Sekolah|Pasar', 2, '🏫'),
+      mq(bm1, 'Manakah kata nama khas?', 'Budak|Sekolah|Siti|Pokok', 2, '👧'),
+      mq(bm1, 'Pilih kata nama tumbuhan:', 'Anjing|Pokok|Berlari|Kuning', 1, '🌳'),
+      mq(bm1, 'Apakah kata nama alat tulis?', 'Meja|Pensel|Berlari|Cantik', 1, '✏️'),
+      mq(bm1, '"___ bermain di padang." Pilih kata nama:', 'Cantik|Ali|Berlari|Panas', 1, '⚽'),
+      mq(bm1, 'Apakah kata nama haiwan laut? 🐟', 'Anjing|Kucing|Ikan|Burung', 2, '🐟'),
+      mq(bm1, 'Manakah kata nama tempat?', 'Cantik|Berlari|Pasar|Besar', 2, '🏪'),
+      mq(bm1, '"Dia membeli ___ baru." Pilih kata nama:', 'besar|cantik|kasut|cepat', 2, '👟'),
+      mq(bm1, 'Berapa suku kata dalam "pin-tu"?', '1|2|3|4', 1, '🚪'),
+      mq(bm1, 'Manakah kata nama khas negara?', 'Malaysia|sekolah|pasar|budak', 0, '🇲🇾'),
+      mq(bm1, 'Kata nama tempat tinggal kita:', 'Kereta|Rumah|Pokok|Baju', 1, '🏠'),
+      mq(bm1, 'Berapa suku kata dalam "ba-si-kal"?', '2|3|4|5', 1, '🚲'),
+      mq(bm1, '"Emak membeli ___ di pasar." Pilih kata nama:', 'besar|murah|sayur|mahal', 2, '🥦'),
+    ]);
+
+    // ── 2. BM Tahun 2: Kata Kerja ────────────────────────────────────
+    final bm2 = await addQuiz('BM Tahun 2: Kata Kerja', '🏃', langId);
+    await addQs(bm2, [
+      mq(bm2, 'Apakah kata kerja?', 'Nama benda|Perkataan tindakan|Kata sifat|Kata hubung', 1, '🏃'),
+      mq(bm2, 'Manakah kata kerja?', 'Cantik|Berlari|Meja|Besar', 1, '🏃'),
+      mq(bm2, 'Kata kerja dalam "Adik membaca buku."', 'membaca|Adik|buku|di', 0, '📖'),
+      mq(bm2, 'Kata kerja dalam "Ayah memasak nasi."', 'Ayah|memasak|nasi|di dapur', 1, '🍳'),
+      mq(bm2, 'Manakah kata kerja?', 'Pokok|Cantik|Melompat|Buku', 2, '🦘'),
+      mq(bm2, '"tulis" + imbuhan "me-" menjadi:', 'Metulis|Menulis|Ditulis|Tertulis', 1, '✍️'),
+      mq(bm2, 'Manakah BUKAN kata kerja?', 'Makan|Tidur|Tinggi|Lari', 2, '💤'),
+      mq(bm2, 'Kata kerja untuk perbuatan berenang:', 'Berlari|Berenang|Memasak|Melukis', 1, '🏊'),
+      mq(bm2, 'Kata kerja untuk perbuatan menulis:', 'Melukis|Memasak|Menulis|Membaca', 2, '✍️'),
+      mq(bm2, '"Dia ___ bola di padang." Pilih kata kerja:', 'besar|merah|menendang|cantik', 2, '⚽'),
+      mq(bm2, 'Pilih kata kerja pasif:', 'Dibeli|Membeli|Membaca|Berlari', 0, '🛍️'),
+      mq(bm2, 'Imbuhan kata kerja pasif:', 'me-|di-|ter-|ke-', 1, '📝'),
+      mq(bm2, '"makan" + imbuhan "me-" menjadi:', 'Memakan|Dimakan|Dimakani|Termakan', 0, '🍽️'),
+      mq(bm2, 'Manakah kata kerja dengan imbuhan "ber-"?', 'Berlari|Memasak|Menulis|Membaca', 0, '🏃'),
+      mq(bm2, '"Ibu ___ pakaian kotor." Pilih kata kerja:', 'cantik|bersih|membasuh|putih', 2, '👗'),
+      mq(bm2, 'Kata kerja: menghasilkan gambar dengan pensel:', 'Menulis|Melukis|Membaca|Menyanyi', 1, '🎨'),
+      mq(bm2, 'Pilih kata kerja dengan imbuhan "ter-":', 'Tertidur|Memasak|Berlari|Membaca', 0, '😴'),
+      mq(bm2, 'Manakah kata kerja aktif?', 'Dimakan|Dibeli|Membaca|Ditulis', 2, '📖'),
+      mq(bm2, '"Murid ___ lagu kebangsaan." Pilih kata kerja:', 'menyanyikan|cantik|merdu|tinggi', 0, '🎵'),
+      mq(bm2, 'Pilih kata kerja yang betul:', 'Berlari|Cantik|Besar|Tinggi', 0, '🏃'),
+    ]);
+
+    // ── 3. BM Tahun 3: Peribahasa ────────────────────────────────────
+    final bm3 = await addQuiz('BM Tahun 3: Peribahasa', '📜', langId);
+    await addQs(bm3, [
+      mq(bm3, 'Maksud "Bersatu teguh bercerai roboh":', 'Kita kuat bila bersatu|Kita perlu bercerai|Bergaduh|Berlari cepat', 0, '🤝'),
+      mq(bm3, '"Seperti katak di bawah tempurung" bermaksud:', 'Pandai|Tidak tahu tentang dunia luar|Berani|Kuat', 1, '🐸'),
+      mq(bm3, 'Simpulan bahasa "tangan panjang" bermaksud:', 'Rajin membantu|Suka mencuri|Kuat bekerja|Pandai menulis', 1, '✋'),
+      mq(bm3, 'Simpulan bahasa "berat tangan" bermaksud:', 'Rajin|Malas|Kuat|Pintar', 1, '😴'),
+      mq(bm3, '"Air yang tenang jangan disangka tiada buaya" bermaksud:', 'Air itu selamat|Jangan pandang rendah orang yang pendiam|Buaya suka air tenang|Jangan mandi di sungai', 1, '🐊'),
+      mq(bm3, '"Nasi sudah menjadi bubur" bermaksud:', 'Nasi sedap dimakan|Perkara yang terjadi tidak boleh diubah|Masak nasi jadi bubur|Bubur lebih sedap', 1, '🍚'),
+      mq(bm3, 'Simpulan bahasa "ringan tangan" bermaksud:', 'Malas|Rajin membantu|Suka mencuri|Lemah', 1, '🤲'),
+      mq(bm3, 'Simpulan bahasa "makan hati" bermaksud:', 'Lapar|Sedih dan kecewa|Gembira|Marah', 1, '😢'),
+      mq(bm3, '"Berakit-rakit ke hulu, berenang ke tepian" bermaksud:', 'Bersenang dahulu|Bersusah dahulu untuk bersenang kemudian|Suka bermain|Malas belajar', 1, '🚣'),
+      mq(bm3, '"Harimau mati meninggalkan belang" bermaksud:', 'Harimau ada belang|Orang yang berjasa akan dikenang|Harimau itu ganas|Semua harimau sama', 1, '🐯'),
+      mq(bm3, '"Seperti isi dengan kuku" bermaksud:', 'Bermusuhan|Sangat rapat dan bersatu|Berbeza pendapat|Tidak suka', 1, '💅'),
+      mq(bm3, '"Tepuk dada tanya selera" bermaksud:', 'Tanya orang lain|Fikirkan dan nilai sendiri|Minta tolong guru|Tanya ibu bapa', 1, '🤔'),
+      mq(bm3, '"Seperti aur dengan tebing" bermaksud:', 'Bermusuhan|Saling memerlukan antara satu sama lain|Berdengki|Tidak bersatu', 1, '🌿'),
+      mq(bm3, 'Simpulan bahasa "keras kepala" bermaksud:', 'Kepala sakit|Degil dan tidak mahu menurut kata|Pandai|Rajin', 1, '🧠'),
+      mq(bm3, '"Setinggi terbang bangau, akhirnya ke kubangan juga" bermaksud:', 'Bangau terbang tinggi|Orang ingat akan asal usul sendiri|Bangau suka kubangan|Semua bangau terbang', 1, '🦢'),
+      mq(bm3, '"Alah bisa tegal biasa" bermaksud:', 'Semua kerja susah|Lama-lama menjadi biasa|Tidak perlu berusaha|Berhenti berusaha', 1, '💪'),
+      mq(bm3, '"Seperti kacang lupakan kulit" bermaksud:', 'Kacang sedap|Lupa jasa orang yang membesarkan kita|Kulit kacang tipis|Makan kacang', 1, '🥜'),
+      mq(bm3, 'Simpulan bahasa "buah tangan" bermaksud:', 'Buah-buahan|Hadiah atau oleh-oleh|Tangan yang bau|Tangan yang besar', 1, '🎁'),
+      mq(bm3, 'Jenis ungkapan "Seperti aur dengan tebing":', 'Peribahasa|Simpulan bahasa|Ayat perbilangan|Kata-kata hikmat', 0, '📜'),
+      mq(bm3, 'Simpulan bahasa "panjang tangan" bermaksud:', 'Tangan panjang|Suka mencuri|Suka membantu|Rajin bekerja', 1, '✋'),
+    ]);
+
+    // ── 4. Matematik Tahun 1: Nombor & Operasi ───────────────────────
+    final mt1 = await addQuiz('Matematik Tahun 1: Nombor & Operasi', '🔢', mathId);
+    await addQs(mt1, [
+      mq(mt1, 'Berapakah 5 + 3?', '7|8|9|10', 1, '➕'),
+      mq(mt1, 'Berapakah 9 - 4?', '3|4|5|6', 2, '➖'),
+      mq(mt1, 'Nombor apakah selepas 19?', '18|20|21|22', 1, '🔢'),
+      mq(mt1, 'Nombor apakah sebelum 30?', '27|28|29|31', 2, '🔢'),
+      mq(mt1, 'Berapakah 7 + 6?', '11|12|13|14', 2, '➕'),
+      mq(mt1, 'Berapakah 15 - 8?', '5|6|7|8', 2, '➖'),
+      mq(mt1, 'Nombor manakah lebih besar: 45 atau 54?', '45|54|Sama|Tiada jawapan', 1, '📊'),
+      mq(mt1, 'Nilai tempat digit 3 dalam nombor 35:', 'Sa|Puluh|Ratus|Ribu', 1, '🔢'),
+      mq(mt1, 'Nilai tempat digit 7 dalam nombor 71:', 'Sa|Puluh|Ratus|Ribu', 1, '🔢'),
+      mq(mt1, 'Berapakah 10 + 10?', '15|20|25|30', 1, '➕'),
+      mq(mt1, 'Berapakah 20 - 5?', '10|12|15|20', 2, '➖'),
+      mq(mt1, 'Digit sa dalam nombor 36 ialah:', '3|6|30|60', 1, '🔢'),
+      mq(mt1, 'Digit puluh dalam nombor 47 ialah:', '4|7|40|70', 0, '🔢'),
+      mq(mt1, 'Apakah nombor ganjil?', '4|6|7|8', 2, '🔢'),
+      mq(mt1, 'Apakah nombor genap?', '3|5|7|8', 3, '🔢'),
+      mq(mt1, 'Berapakah 8 + 9?', '15|16|17|18', 2, '➕'),
+      mq(mt1, 'Berapakah 14 - 7?', '5|6|7|8', 2, '➖'),
+      mq(mt1, 'Berapa kumpulan puluh dalam nombor 50?', '3|4|5|6', 2, '🔢'),
+      mq(mt1, 'Nombor manakah paling kecil?', '45|23|67|89', 1, '📊'),
+      mq(mt1, 'Berapakah 6 + 7?', '11|12|13|14', 2, '➕'),
+    ]);
+
+    // ── 5. Matematik Tahun 2: Sifir 2-5 ─────────────────────────────
+    final mt2 = await addQuiz('Matematik Tahun 2: Sifir 2-5', '✖️', mathId);
+    await addQs(mt2, [
+      mq(mt2, '2 × 3 = ?', '4|5|6|7', 2, '✖️'),
+      mq(mt2, '3 × 4 = ?', '10|11|12|13', 2, '✖️'),
+      mq(mt2, '4 × 5 = ?', '18|19|20|21', 2, '✖️'),
+      mq(mt2, '5 × 6 = ?', '25|28|30|35', 2, '✖️'),
+      mq(mt2, '2 × 9 = ?', '14|16|18|20', 2, '✖️'),
+      mq(mt2, '3 × 7 = ?', '18|20|21|24', 2, '✖️'),
+      mq(mt2, '4 × 8 = ?', '30|31|32|33', 2, '✖️'),
+      mq(mt2, '5 × 5 = ?', '20|22|25|30', 2, '✖️'),
+      mq(mt2, '12 ÷ 4 = ?', '2|3|4|5', 1, '➗'),
+      mq(mt2, '15 ÷ 3 = ?', '3|4|5|6', 2, '➗'),
+      mq(mt2, '20 ÷ 5 = ?', '3|4|5|6', 1, '➗'),
+      mq(mt2, '18 ÷ 2 = ?', '7|8|9|10', 2, '➗'),
+      mq(mt2, '3 × 10 = ?', '13|20|30|33', 2, '✖️'),
+      mq(mt2, '5 × 8 = ?', '35|38|40|45', 2, '✖️'),
+      mq(mt2, '2 × 7 = ?', '12|13|14|15', 2, '✖️'),
+      mq(mt2, '4 × 6 = ?', '20|22|24|26', 2, '✖️'),
+      mq(mt2, '30 ÷ 5 = ?', '4|5|6|7', 2, '➗'),
+      mq(mt2, '16 ÷ 4 = ?', '2|3|4|5', 2, '➗'),
+      mq(mt2, '5 × 9 = ?', '40|43|45|48', 2, '✖️'),
+      mq(mt2, '3 × 9 = ?', '24|26|27|28', 2, '✖️'),
+    ]);
+
+    // ── 6. Matematik Tahun 3: Pecahan & Wang ─────────────────────────
+    final mt3 = await addQuiz('Matematik Tahun 3: Pecahan & Wang', '💰', mathId);
+    await addQs(mt3, [
+      mq(mt3, '½ bermaksud:', '1 drp 3 bhgn|1 drp 2 bhgn|2 drp 1 bhgn|3 drp 2 bhgn', 1, '🍕'),
+      mq(mt3, 'Pecahan manakah lebih besar?', '1/4|1/2|1/8|1/16', 1, '📊'),
+      mq(mt3, '1/4 + 1/4 = ?', '1/4|2/4|3/4|4/4', 1, '➕'),
+      mq(mt3, 'RM1.00 = berapa sen?', '10|50|100|200', 2, '💰'),
+      mq(mt3, 'RM2.50 + RM1.50 = ?', 'RM3.00|RM3.50|RM4.00|RM4.50', 2, '💰'),
+      mq(mt3, 'RM5.00 - RM2.30 = ?', 'RM2.70|RM2.80|RM3.00|RM3.30', 0, '💰'),
+      mq(mt3, 'Berapa keping 10 sen dalam RM1.00?', '5|10|20|50', 1, '💰'),
+      mq(mt3, '3/4 bersamaan dengan:', '6/8|4/8|2/4|5/8', 0, '🔢'),
+      mq(mt3, '1/2 daripada 12 = ?', '4|5|6|7', 2, '🔢'),
+      mq(mt3, '1/4 daripada 20 = ?', '4|5|6|7', 1, '🔢'),
+      mq(mt3, 'RM10.00 - RM6.50 = ?', 'RM2.50|RM3.00|RM3.50|RM4.00', 2, '💰'),
+      mq(mt3, '1/3 daripada 9 = ?', '2|3|4|5', 1, '🔢'),
+      mq(mt3, 'Manakah pecahan setara dengan 1/2?', '2/6|2/4|3/8|4/10', 1, '🔢'),
+      mq(mt3, 'RM0.50 + RM0.25 = ?', 'RM0.65|RM0.70|RM0.75|RM0.80', 2, '💰'),
+      mq(mt3, '2/4 dalam perkataan ialah:', 'Satu perdua|Dua perempat|Dua pertiga|Tiga perempat', 1, '📝'),
+      mq(mt3, 'Manakah BUKAN pecahan wajar?', '1/2|3/4|5/3|2/5', 2, '📝'),
+      mq(mt3, 'RM50.00 - RM32.80 = ?', 'RM16.20|RM17.20|RM17.80|RM18.20', 1, '💰'),
+      mq(mt3, 'Susun dari kecil: 1/2, 1/4, 3/4, 1/8', '1/8, 1/4, 1/2, 3/4|1/4, 1/2, 1/8, 3/4|3/4, 1/2, 1/4, 1/8|1/2, 1/4, 3/4, 1/8', 0, '📊'),
+      mq(mt3, '20 buku, diberi 1/4 kepada adik. Berapa buku diberi?', '4|5|6|7', 1, '📚'),
+      mq(mt3, 'RM100.00 - RM45.60 = ?', 'RM54.40|RM54.60|RM55.40|RM55.60', 0, '💰'),
+    ]);
+
+    // ── 7. Sains Tahun 1: Haiwan & Tumbuhan ──────────────────────────
+    final sc1 = await addQuiz('Sains Tahun 1: Haiwan & Tumbuhan', '🌱', sciId);
+    await addQs(sc1, [
+      mq(sc1, 'Tumbuhan perlukan ___ untuk hidup:', 'Cahaya matahari|Air|Baja|Semua di atas', 3, '🌱'),
+      mq(sc1, 'Haiwan yang makan tumbuhan sahaja:', 'Harimau|Kambing|Buaya|Helang', 1, '🐐'),
+      mq(sc1, 'Bahagian tumbuhan yang menyerap air dari tanah:', 'Daun|Batang|Akar|Bunga', 2, '🌿'),
+      mq(sc1, 'Haiwan yang hidup di air dan darat:', 'Ular|Katak|Arnab|Ayam', 1, '🐸'),
+      mq(sc1, 'Fungsi daun bagi tumbuhan:', 'Menyerap air|Membuat makanan melalui fotosintesis|Mengeluarkan buah|Menyimpan air', 1, '🍃'),
+      mq(sc1, 'Haiwan yang mempunyai sayap:', 'Ular|Ikan|Kupu-kupu|Katak', 2, '🦋'),
+      mq(sc1, 'Proses tumbuhan membuat makanan dipanggil:', 'Pernafasan|Fotosintesis|Penghadaman|Percambahan', 1, '☀️'),
+      mq(sc1, 'Haiwan yang bertelur:', 'Kucing|Arnab|Ayam|Anjing', 2, '🥚'),
+      mq(sc1, 'Fungsi akar bagi tumbuhan:', 'Membuat bunga|Menyerap air dan bahan galian|Membuat makanan|Melindungi tumbuhan', 1, '🌱'),
+      mq(sc1, 'Tumbuhan yang boleh dimakan:', 'Kaktus|Padi|Tumbuhan hiasan|Tumbuhan beracun', 1, '🌾'),
+      mq(sc1, 'Haiwan yang tidur pada waktu siang:', 'Kucing|Katak|Kelawar|Anjing', 2, '🦇'),
+      mq(sc1, 'Fungsi batang tumbuhan:', 'Menyerap air|Sokongan dan pengangkutan air|Membuat makanan|Berbunga', 1, '🌿'),
+      mq(sc1, 'Haiwan yang boleh terbang:', 'Gajah|Singa|Kelawar|Kuda', 2, '🦇'),
+      mq(sc1, 'Tumbuhan yang hidup di tempat kering:', 'Teratai|Kaktus|Padi|Mawar', 1, '🌵'),
+      mq(sc1, 'Jenis makanan harimau:', 'Tumbuhan|Daging|Buah-buahan|Biji-bijian', 1, '🐯'),
+      mq(sc1, 'Haiwan yang mempunyai perisai di badan:', 'Arnab|Tikus|Penyu|Katak', 2, '🐢'),
+      mq(sc1, 'Bahagian bunga yang betul:', 'Akar, batang, daun|Kelopak, putik, benang sari|Akar, buah, biji|Batang, ranting, kulit', 1, '🌸'),
+      mq(sc1, 'Keperluan biji benih untuk bercambah:', 'Cahaya sahaja|Air, udara dan haba|Tanah sahaja|Baja sahaja', 1, '🌱'),
+      mq(sc1, 'Haiwan herbivora ialah:', 'Singa|Buaya|Lembu|Helang', 2, '🐄'),
+      mq(sc1, 'Tumbuhan yang hidup di dalam air:', 'Kaktus|Pokok getah|Teratai|Padi', 2, '🪷'),
+    ]);
+
+    // ── 8. Sains Tahun 2: Deria & Kesihatan ──────────────────────────
+    final sc2 = await addQuiz('Sains Tahun 2: Deria & Kesihatan', '❤️', sciId);
+    await addQs(sc2, [
+      mq(sc2, 'Berapa organ deria yang dimiliki manusia?', '3|4|5|6', 2, '👁️'),
+      mq(sc2, 'Organ deria untuk melihat:', 'Hidung|Telinga|Mata|Lidah', 2, '👁️'),
+      mq(sc2, 'Organ deria untuk menghidu:', 'Mata|Hidung|Telinga|Kulit', 1, '👃'),
+      mq(sc2, 'Organ deria untuk merasa sentuhan:', 'Mata|Hidung|Kulit|Lidah', 2, '🤚'),
+      mq(sc2, 'Organ deria untuk mendengar:', 'Mata|Telinga|Hidung|Mulut', 1, '👂'),
+      mq(sc2, 'Organ deria untuk merasa makanan:', 'Mata|Hidung|Telinga|Lidah', 3, '👅'),
+      mq(sc2, 'Organ yang mengepam darah ke seluruh badan:', 'Paru-paru|Hati|Jantung|Buah pinggang', 2, '❤️'),
+      mq(sc2, 'Organ yang digunakan untuk bernafas:', 'Jantung|Paru-paru|Hati|Perut', 1, '🫁'),
+      mq(sc2, 'Tulang yang melindungi otak:', 'Tulang rusuk|Tulang belakang|Tengkorak|Tulang dada', 2, '💀'),
+      mq(sc2, 'Makanan yang baik untuk kesihatan mata:', 'Kerepek|Soda|Lobak merah|Gula-gula', 2, '🥕'),
+      mq(sc2, 'Cara menjaga kesihatan gigi:', 'Makan banyak gula|Berus gigi 2 kali sehari|Minum soda|Tidak berus gigi', 1, '🦷'),
+      mq(sc2, 'Berapa kali kita perlu berus gigi sehari?', '1|2|3|4', 1, '🦷'),
+      mq(sc2, 'Makanan yang baik untuk tulang:', 'Soda|Kerepek|Susu|Gula-gula', 2, '🥛'),
+      mq(sc2, 'Kepentingan bersenam:', 'Menjadi gemuk|Menjaga kesihatan badan|Menjadi malas|Tiada manfaat', 1, '🏃'),
+      mq(sc2, 'Vitamin untuk kesihatan mata:', 'Vitamin A|Vitamin B|Vitamin C|Vitamin D', 0, '🥕'),
+      mq(sc2, 'Bahan dalam susu yang baik untuk tulang:', 'Zat besi|Vitamin C|Kalsium|Protein', 2, '🥛'),
+      mq(sc2, 'Kepentingan tidur yang cukup:', 'Supaya mengantuk|Rehat dan pulih badan|Supaya malas|Untuk duduk sahaja', 1, '😴'),
+      mq(sc2, 'Yang boleh merosakkan deria pendengaran:', 'Bunyi lembut|Bunyi yang terlalu kuat|Muzik yang merdu|Membaca buku', 1, '👂'),
+      mq(sc2, 'Aktiviti yang sihat untuk badan:', 'Duduk menonton TV seharian|Bermain video game sahaja|Bersenam dan bermain di luar|Makan dan tidur sahaja', 2, '🏃'),
+      mq(sc2, 'Cara menjaga kebersihan diri:', 'Mandi sekali seminggu|Mandi sekurang-kurangnya sekali sehari|Tidak mandi|Mandi sebulan sekali', 1, '🛁'),
+    ]);
+
+    // ── 9. Sains Tahun 3: Alam Sekitar ───────────────────────────────
+    final sc3 = await addQuiz('Sains Tahun 3: Alam Sekitar', '🌍', sciId);
+    await addQs(sc3, [
+      mq(sc3, 'Pencemaran bermaksud:', 'Udara bersih|Bahan berbahaya yang mencemarkan alam|Tumbuhan hijau|Sungai bersih', 1, '🌍'),
+      mq(sc3, 'Penyebab pencemaran udara:', 'Menanam pokok|Mengitar semula|Pembakaran terbuka|Menyapu', 2, '🌫️'),
+      mq(sc3, 'Cara terbaik mengurus sisa pepejal:', 'Buang merata-rata|Bakar semua|Kurangkan, guna semula, kitar semula|Tanam dalam tanah', 2, '♻️'),
+      mq(sc3, '3R dalam pengurusan sisa bermaksud:', 'Read, Run, Rest|Reduce, Reuse, Recycle|Rub, Rinse, Repeat|Run, Race, Rest', 1, '♻️'),
+      mq(sc3, 'Jenis pencemaran apabila kilang buang bahan kimia ke sungai:', 'Pencemaran udara|Pencemaran tanah|Pencemaran air|Pencemaran bunyi', 2, '💧'),
+      mq(sc3, 'Sumber tenaga yang tidak akan habis:', 'Petroleum|Arang batu|Gas asli|Tenaga solar', 3, '☀️'),
+      mq(sc3, 'Cara menjimatkan tenaga elektrik di rumah:', 'Biarkan lampu menyala|Padam lampu bila tidak digunakan|Kipas kelajuan maksima|Aircon sepanjang masa', 1, '💡'),
+      mq(sc3, 'Akibat menebang pokok tanpa kawalan:', 'Banjir dan tanah runtuh|Cuaca lebih baik|Udara lebih bersih|Tiada kesan', 0, '🌳'),
+      mq(sc3, 'Cara melindungi hutan:', 'Menebang pokok|Membakar hutan|Menanam semula pokok|Membina lebih kilang', 2, '🌳'),
+      mq(sc3, 'Akibat habitat haiwan musnah:', 'Haiwan menjadi lebih banyak|Haiwan boleh pupus|Haiwan lebih sihat|Tiada kesan', 1, '🐘'),
+      mq(sc3, 'Contoh pencemaran bunyi:', 'Bunyi angin|Bunyi hujan|Bunyi kenderaan di jalan raya|Bunyi burung', 2, '🚗'),
+      mq(sc3, 'Tenaga yang dihasilkan daripada matahari:', 'Tenaga nuklear|Tenaga solar|Tenaga angin|Tenaga air', 1, '☀️'),
+      mq(sc3, 'Cara menjimatkan air:', 'Biarkan paip bocor|Mandi lama|Tutup paip semasa gosok gigi|Guna air berlebihan', 2, '💧'),
+      mq(sc3, 'Kesan penggunaan plastik yang berlebihan:', 'Alam lebih bersih|Mencemarkan laut dan bunuh hidupan laut|Cuaca lebih baik|Pokok lebih hijau', 1, '🐢'),
+      mq(sc3, 'Bahan yang boleh dikitar semula:', 'Kertas sahaja|Sisa makanan sahaja|Logam dan plastik sahaja|Kertas, plastik, kaca dan logam', 3, '♻️'),
+      mq(sc3, 'Pemanasan global bermaksud:', 'Cuaca sejuk|Suhu bumi semakin meningkat|Hujan lebat|Banjir sahaja', 1, '🌡️'),
+      mq(sc3, 'Gas yang menyebabkan pemanasan global:', 'Oksigen|Nitrogen|Karbon dioksida|Hidrogen', 2, '🌍'),
+      mq(sc3, 'Aktiviti yang TIDAK menyebabkan pencemaran:', 'Membakar sampah|Menanam pokok|Buang sisa ke sungai|Asap kenderaan', 1, '🌱'),
+      mq(sc3, 'Kepentingan hutan hujan:', 'Mengurangkan oksigen|Sumber oksigen dan perlindungan hidupan liar|Meningkatkan pencemaran|Mengurangkan hujan', 1, '🌳'),
+      mq(sc3, 'Cara mengurangkan penggunaan plastik:', 'Lebih banyak guna plastik|Guna bekas yang boleh diguna semula|Beli lebih banyak plastik|Buang plastik ke sungai', 1, '🛍️'),
+    ]);
+
+    // ── 10. English Year 1: Vocabulary ───────────────────────────────
+    final en1 = await addQuiz('English Year 1: Vocabulary', '🔤', langId);
+    await addQs(en1, [
+      mq(en1, 'What colour is a banana?', 'Red|Yellow|Green|Blue', 1, '🍌'),
+      mq(en1, 'Which animal says "meow"?', 'Dog|Cat|Cow|Bird', 1, '🐱'),
+      mq(en1, 'What is the opposite of "big"?', 'Tall|Heavy|Small|Long', 2, '📏'),
+      mq(en1, 'What colour is the sky on a sunny day?', 'Green|Blue|Red|Yellow', 1, '☀️'),
+      mq(en1, 'What word rhymes with "cat"?', 'Dog|Bat|Cow|Fish', 1, '🐱'),
+      mq(en1, 'What do fish live in?', 'Trees|Land|Water|Sky', 2, '🐟'),
+      mq(en1, 'Which word begins with the letter "B"?', 'Apple|Cat|Ball|Dog', 2, '🎈'),
+      mq(en1, 'What is the plural of "cat"?', 'Cats|Cates|Cat|Caties', 0, '🐱'),
+      mq(en1, 'What colour is a strawberry?', 'Yellow|Red|Blue|Green', 1, '🍓'),
+      mq(en1, 'How many days are in a week?', '5|6|7|8', 2, '📅'),
+      mq(en1, 'What is the opposite of "hot"?', 'Warm|Cold|Big|Small', 1, '🥶'),
+      mq(en1, 'Which is a vowel?', 'B|C|A|D', 2, '📝'),
+      mq(en1, 'What do we call the place we live in?', 'School|Hospital|House|Market', 2, '🏠'),
+      mq(en1, 'What is the plural of "dog"?', 'Dogs|Doges|Dog|Dogies', 0, '🐕'),
+      mq(en1, 'Which word rhymes with "book"?', 'Look|Ball|Cat|Fish', 0, '📚'),
+      mq(en1, 'How many months are in a year?', '10|11|12|13', 2, '📅'),
+      mq(en1, 'What colour is an orange?', 'Red|Yellow|Orange|Green', 2, '🍊'),
+      mq(en1, 'Which word ends with "-ing"?', 'Jump|Eat|Running|Walk', 2, '🏃'),
+      mq(en1, 'What is the correct spelling?', 'Elefant|Elephant|Eliphant|Elephent', 1, '🐘'),
+      mq(en1, 'What sound does "ph" make?', 'p|f|b|d', 1, '📝'),
+    ]);
+
+    // ── 11. English Year 2: Grammar ──────────────────────────────────
+    final en2 = await addQuiz('English Year 2: Grammar', '📗', langId);
+    await addQs(en2, [
+      mq(en2, 'Which sentence is correct?', 'She have a book|She has a book|She having a book|She haves a book', 1, '📚'),
+      mq(en2, 'What is the past tense of "go"?', 'Goed|Goes|Went|Going', 2, '🚶'),
+      mq(en2, 'Which is a noun?', 'Run|Beautiful|Table|Quickly', 2, '🪑'),
+      mq(en2, 'What is the plural of "mouse"?', 'Mouses|Mouse|Mice|Mousen', 2, '🐭'),
+      mq(en2, 'Which sentence uses "is" correctly?', 'They is happy|She is happy|I is happy|We is happy', 1, '😊'),
+      mq(en2, 'What is the past tense of "eat"?', 'Eated|Eats|Ate|Eating', 2, '🍽️'),
+      mq(en2, 'Which word is an adjective?', 'Run|Happy|Table|Eat', 1, '😊'),
+      mq(en2, 'What is the plural of "leaf"?', 'Leafs|Leaf|Leaves|Leaved', 2, '🍃'),
+      mq(en2, 'Fill: "The dog ___ in the park." (yesterday)', 'play|plays|played|playing', 2, '🐕'),
+      mq(en2, 'Fill: "I ___ my homework." (right now)', 'do|does|did|doing', 0, '📝'),
+      mq(en2, 'Which sentence is in the future tense?', 'She plays|She played|She will play|She is playing', 2, '🔮'),
+      mq(en2, 'What is the opposite of "happy"?', 'Joyful|Glad|Sad|Excited', 2, '😢'),
+      mq(en2, 'Which word is a verb?', 'Chair|Beautiful|Jump|Quickly', 2, '🦘'),
+      mq(en2, 'Fill: "___ is your name?"', 'What|Who|Where|When', 0, '❓'),
+      mq(en2, 'What is the plural of "box"?', 'Boxs|Box|Boxes|Boxen', 2, '📦'),
+      mq(en2, 'Which sentence is correct?', 'They are playing|They is playing|They am playing|They was playing', 0, '🏃'),
+      mq(en2, 'What is the past tense of "write"?', 'Writed|Writes|Written|Wrote', 3, '✍️'),
+      mq(en2, 'Fill: "There ___ many birds in the tree."', 'is|am|are|was', 2, '🐦'),
+      mq(en2, 'Which word is a preposition?', 'Table|Jump|Under|Happy', 2, '📍'),
+      mq(en2, 'What is the plural of "child"?', 'Childs|Children|Childrens|Child', 1, '👦'),
+    ]);
+
+    // ── 12. Pendidikan Moral: Nilai Murni ────────────────────────────
+    final pm = await addQuiz('Pendidikan Moral: Nilai Murni', '🤝', langId);
+    await addQs(pm, [
+      mq(pm, 'Nilai ditunjukkan apabila membantu rakan yang susah:', 'Kedekut|Baik hati dan bertimbang rasa|Tidak peduli|Sombong', 1, '🤝'),
+      mq(pm, 'Tindakan yang betul apabila membuat kesilapan:', 'Salahkan orang lain|Mengaku dan minta maaf|Berpura-pura|Berlari', 1, '😔'),
+      mq(pm, 'Nilai yang ditunjukkan pelajar yang rajin belajar:', 'Malas|Kerajinan|Sombong|Pemalas', 1, '📚'),
+      mq(pm, 'Maksud "kejujuran":', 'Suka berbohong|Berkata benar walau apapun|Suka mencuri|Tidak peduli', 1, '🙏'),
+      mq(pm, 'Nilai yang penting dalam kerja berpasukan:', 'Bersaing|Sombong|Kerjasama|Kedekut', 2, '🤝'),
+      mq(pm, 'Tindakan yang betul apabila jumpa dompet hilang:', 'Simpan sendiri|Ambil wang sahaja|Serahkan kepada pihak berkuasa|Buang', 2, '👛'),
+      mq(pm, 'Nilai menghormati orang yang lebih tua:', 'Kesopanan dan hormat|Sombong|Kasar|Tidak peduli', 0, '🙏'),
+      mq(pm, 'Nilai yang dilanggar apabila menyontek:', 'Kerajinan|Kejujuran|Kesopanan|Keberanian', 1, '📝'),
+      mq(pm, 'Maksud "bertanggungjawab":', 'Lari dari masalah|Tidak ambil kisah|Menunaikan tugas dengan baik|Buat kerja separuh jalan', 2, '💪'),
+      mq(pm, 'Nilai menjaga alam sekitar:', 'Cintakan alam|Tidak peduli|Membuang sampah|Merosakkan hutan', 0, '🌿'),
+      mq(pm, 'Nilai kesederhanaan dalam berbelanja:', 'Membeli semua yang diingini|Berbelanja mengikut kemampuan|Menunjuk-nunjuk kekayaan|Boros', 1, '💰'),
+      mq(pm, 'Nilai yang penting untuk menjaga keamanan:', 'Bergaduh|Berbengkeng|Keharmonian dan perdamaian|Benci-membenci', 2, '☮️'),
+      mq(pm, 'Tindakan yang betul apabila melihat rakan dibuli:', 'Sertai kegiatan buli|Ketawa|Bantu dan laporkan kepada guru|Berdiam diri', 2, '🦸'),
+      mq(pm, 'Nilai seseorang yang sentiasa tepat pada masa:', 'Malas|Alpa|Ketepatan masa|Tidak peduli', 2, '⏰'),
+      mq(pm, 'Nilai yang perlu ada dalam diri seorang pemimpin:', 'Sombong|Adil dan bertanggungjawab|Pemarah|Kedekut', 1, '👑'),
+      mq(pm, 'Cara menghargai jasa guru:', 'Tidak dengar arahan|Hormati dan berterima kasih|Tidak buat kerja rumah|Ponteng sekolah', 1, '🏫'),
+      mq(pm, 'Nilai berkongsi makanan dengan rakan:', 'Tamak|Haloba|Murah hati|Bakhil', 2, '🍱'),
+      mq(pm, 'Tindakan apabila berbeza pendapat dengan rakan:', 'Bergaduh|Mengejek|Bermusuh|Berbincang dengan hormat', 3, '🗣️'),
+      mq(pm, 'Nilai yang mengekalkan persahabatan:', 'Dengki|Khianat|Setia dan jujur|Tidak peduli', 2, '👫'),
+      mq(pm, 'Cara menjadi warganegara yang baik:', 'Ambil peduli tentang negara dan masyarakat|Tidak mengundi|Tidak tahu tentang negara|Berdiam diri sahaja', 0, '🇲🇾'),
+    ]);
+
+    // ── 13. Sejarah Tahun 4: Malaysia ────────────────────────────────
+    final sj4 = await addQuiz('Sejarah Tahun 4: Negara Kita', '🏴', sciId);
+    await addQs(sj4, [
+      mq(sj4, 'Perdana Menteri pertama Malaysia:', 'Tun Abdul Razak|Tun Hussein Onn|Tunku Abdul Rahman|Tun Mahathir', 2, '🇲🇾'),
+      mq(sj4, 'Tahun kemerdekaan Malaysia:', '1955|1956|1957|1958', 2, '🎉'),
+      mq(sj4, 'Bilangan negeri di Malaysia:', '11|12|13|14', 2, '🗺️'),
+      mq(sj4, 'Ibu negara Malaysia:', 'Johor Bahru|Kuala Lumpur|Putrajaya|Ipoh', 1, '🏙️'),
+      mq(sj4, 'Lambang negara Malaysia dipanggil:', 'Jalur Gemilang|Jata Negara|Bunga Raya|Kijang Mas', 1, '🛡️'),
+      mq(sj4, 'Bunga kebangsaan Malaysia:', 'Melur|Mawar|Bunga Raya|Teratai', 2, '🌺'),
+      mq(sj4, 'Malaysia Timur terdiri daripada negeri:', 'Johor dan Kedah|Sabah dan Sarawak|Selangor dan Perak|Kelantan dan Terengganu', 1, '🗺️'),
+      mq(sj4, 'Bahasa kebangsaan Malaysia:', 'Bahasa Inggeris|Bahasa Cina|Bahasa Malaysia|Bahasa Tamil', 2, '🇲🇾'),
+      mq(sj4, 'Sungai terpanjang di Malaysia:', 'Sungai Klang|Sungai Pahang|Sungai Rajang|Sungai Kinabatangan', 2, '🌊'),
+      mq(sj4, 'Lagu kebangsaan Malaysia:', 'Malaysia Berjaya|Jalur Gemilang|Negaraku|Malaysia Tanah Airku', 2, '🎵'),
+      mq(sj4, 'Pengasas Kesultanan Melayu Melaka:', 'Sultan Mahmud|Parameswara|Sultan Alauddin|Sultan Muzaffar', 1, '👑'),
+      mq(sj4, 'Bilangan garis dalam Jalur Gemilang:', '10|12|14|16', 2, '🚩'),
+      mq(sj4, 'Yang diwakili oleh bintang 14 mata dalam Jalur Gemilang:', 'Jumlah penduduk|14 buah negeri dan persekutuan|14 kaum|14 bahasa', 1, '⭐'),
+      mq(sj4, 'Warna bulan sabit dalam Jalur Gemilang:', 'Merah|Biru|Kuning|Putih', 2, '🌙'),
+      mq(sj4, 'Hari Kebangsaan Malaysia disambut pada:', '16 September|31 Ogos|1 Januari|31 Julai', 1, '🎉'),
+      mq(sj4, 'Hari Malaysia disambut pada:', '31 Ogos|16 September|17 Ogos|1 Oktober', 1, '🎉'),
+      mq(sj4, 'Nama Perlembagaan Malaysia:', 'Perlembagaan Persekutuan|Perlembagaan Agong|Perlembagaan Parlimen|Perlembagaan Raja', 0, '📜'),
+      mq(sj4, 'Bangunan simbol Malaysia yang terkenal di dunia:', 'Big Ben|Menara Eiffel|Menara Berkembar Petronas|Empire State', 2, '🏙️'),
+      mq(sj4, 'Mata wang Malaysia:', 'Dollar|Pound|Ringgit|Rupiah', 2, '💰'),
+      mq(sj4, 'Yang di-Pertuan Agong pertama Malaysia:', 'Sultan Selangor|Tuanku Abdul Rahman|Tunku Abdul Rahman|Sultan Johor', 1, '👑'),
+    ]);
+
+    // ── 14. Matematik Tahun 4: Perpuluhan & Ukuran ───────────────────
+    final mt4 = await addQuiz('Matematik Tahun 4: Perpuluhan', '📐', mathId);
+    await addQs(mt4, [
+      mq(mt4, '0.5 dalam bentuk pecahan:', '1/4|1/2|1/5|1/3', 1, '🔢'),
+      mq(mt4, '0.25 dalam peratus:', '20%|25%|30%|35%', 1, '📊'),
+      mq(mt4, '1.5 + 2.3 = ?', '3.5|3.6|3.7|3.8', 3, '➕'),
+      mq(mt4, '5.0 - 2.5 = ?', '2.0|2.5|3.0|3.5', 1, '➖'),
+      mq(mt4, '100 sentimeter = ?', '10m|1m|0.1m|100m', 1, '📏'),
+      mq(mt4, '1 kilogram = ?', '100g|500g|1000g|10000g', 2, '⚖️'),
+      mq(mt4, '50% dalam perpuluhan:', '0.05|0.25|0.5|0.75', 2, '📊'),
+      mq(mt4, '0.75 dalam peratus:', '50%|65%|70%|75%', 3, '📊'),
+      mq(mt4, '3.6 × 10 = ?', '3.6|36|360|3600', 1, '✖️'),
+      mq(mt4, '45.0 ÷ 5 = ?', '8|9|10|11', 1, '➗'),
+      mq(mt4, '1000 meter = ?', '10km|1km|0.1km|100km', 1, '🗺️'),
+      mq(mt4, '2.4 - 1.8 = ?', '0.4|0.5|0.6|0.7', 2, '➖'),
+      mq(mt4, '25% daripada 200 = ?', '25|40|50|75', 2, '📊'),
+      mq(mt4, '0.1 + 0.2 = ?', '0.1|0.2|0.3|0.4', 2, '➕'),
+      mq(mt4, '10% daripada 150 = ?', '10|15|20|25', 1, '📊'),
+      mq(mt4, '60 minit = ?', '0.5 jam|1 jam|1.5 jam|2 jam', 1, '⏰'),
+      mq(mt4, '2.5 × 4 = ?', '8|9|10|11', 2, '✖️'),
+      mq(mt4, '80% = berapa perpuluhan?', '0.08|0.8|8|80', 1, '📊'),
+      mq(mt4, '1.2 km = berapa meter?', '12m|120m|1200m|12000m', 2, '📏'),
+      mq(mt4, '75% daripada 100 = ?', '65|70|75|80', 2, '📊'),
+    ]);
   }
 }

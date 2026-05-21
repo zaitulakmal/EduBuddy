@@ -50,7 +50,7 @@ class _StorySceneWidgetState extends State<StorySceneWidget>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: Listenable.merge([_slowAnim, _mediumAnim, _fastAnim]),
-      builder: (_, __) {
+      builder: (_, _) {
         return ClipRRect(
           borderRadius: BorderRadius.circular(28),
           child: CustomPaint(
@@ -590,7 +590,11 @@ void _draw5PointStar(Canvas c, Offset center, double r, Color color, {double inn
     final radius = i.isEven ? r : r * innerRatio;
     final x = center.dx + cos(angle) * radius;
     final y = center.dy + sin(angle) * radius;
-    if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
+    if (i == 0) {
+      path.moveTo(x, y);
+    } else {
+      path.lineTo(x, y);
+    }
   }
   path.close();
   c.drawPath(path, Paint()..color = color);

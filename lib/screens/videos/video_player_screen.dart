@@ -137,7 +137,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     ...List.generate(3, (i) {
                       return AnimatedBuilder(
                         animation: _pulse,
-                        builder: (_, __) => Transform.scale(
+                        builder: (_, _) => Transform.scale(
                           scale: _pulse.value - (i * 0.1),
                           child: Container(
                             width: 160.0 + (i * 60),
@@ -158,7 +158,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     // Main emoji
                     AnimatedBuilder(
                       animation: _pulse,
-                      builder: (_, __) => Transform.scale(
+                      builder: (_, _) => Transform.scale(
                         scale: _isPlaying ? _pulse.value : 1.0,
                         child: Text(
                           widget.video.thumbnailEmoji,

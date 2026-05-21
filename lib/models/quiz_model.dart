@@ -53,6 +53,7 @@ class QuizQuestion {
   final List<String> optionsMs;
   final int correctIndex;
   final String explanation;
+  final String emoji;
 
   const QuizQuestion({
     this.id,
@@ -63,6 +64,7 @@ class QuizQuestion {
     required this.optionsMs,
     required this.correctIndex,
     this.explanation = '',
+    this.emoji = '',
   });
 
   Map<String, dynamic> toMap() => {
@@ -74,6 +76,7 @@ class QuizQuestion {
         'options_ms': optionsMs.join('|'),
         'correct_index': correctIndex,
         'explanation': explanation,
+        'emoji': emoji,
       };
 
   factory QuizQuestion.fromMap(Map<String, dynamic> map) => QuizQuestion(
@@ -85,5 +88,6 @@ class QuizQuestion {
         optionsMs: (map['options_ms'] as String).split('|'),
         correctIndex: map['correct_index'],
         explanation: map['explanation'] ?? '',
+        emoji: map['emoji'] as String? ?? '',
       );
 }

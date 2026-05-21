@@ -1,6 +1,1 @@
-import Flutter
-import UIKit
-
-class SceneDelegate: FlutterSceneDelegate {
-
-}
+// SceneDelegate is not used - app uses the classic AppDelegate lifecycle

@@ -413,7 +413,7 @@ class ProfileScreen extends StatelessWidget {
               Switch(
                 value: provider.selectedLanguage == 'ms',
                 onChanged: (_) => provider.toggleLanguage(),
-                activeColor: AppColors.primary,
+                activeThumbColor: AppColors.primary,
               ),
             ],
           ),
