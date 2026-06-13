@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:confetti/confetti.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:confetti/confetti.dart';
 import '../../models/quiz_model.dart';
 import '../../providers/app_provider.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/animal_illustrations.dart';
 
 // ── Reference-matched palette ─────────────────────────────────────────────────
 const _kBgOrange    = Color(0xFFE8784A);
@@ -93,6 +94,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
 
   Future<void> _loadQuestions() async {
     final qs = await widget.provider.loadQuizQuestions(widget.quiz.id!);
+    if (!mounted) return;
     setState(() => _questions = qs);
     _cardCtrl.forward();
     _timerCtrl.forward(from: 0);
@@ -100,10 +102,11 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
 
   void _onTimerDone(AnimationStatus status) {
     if (status == AnimationStatus.completed && !_answered) {
+      if (!mounted) return;
       setState(() { _answered = true; _timedOut = true; _streak = 0; });
       _shakeCtrl.forward(from: 0);
       _monsterBounce.forward(from: 0);
-      Future.delayed(const Duration(milliseconds: 1800), _next);
+      Future.delayed(const Duration(milliseconds: 1800), () { if (mounted) _next(); });
     }
   }
 
@@ -138,10 +141,11 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
     } else {
       _shakeCtrl.forward(from: 0);
     }
-    Future.delayed(const Duration(milliseconds: 1900), _next);
+    Future.delayed(const Duration(milliseconds: 1900), () { if (mounted) _next(); });
   }
 
   void _next() {
+    if (!mounted) return;
     if (_currentIndex < _questions.length - 1) {
       setState(() {
         _currentIndex++;
@@ -280,7 +284,6 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
   }
 
   Widget _buildQuestionCard(QuizQuestion q) {
-    final displayEmoji = q.emoji.isNotEmpty ? q.emoji : widget.quiz.emoji;
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
       child: ScaleTransition(
@@ -315,8 +318,9 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
                   child: ScaleTransition(
                     scale: _monsterAnim,
                     child: _QuestionGraphic(
-                      emoji: _timedOut ? '⏰' : displayEmoji,
+                      question: q.question,
                       categoryId: widget.quiz.categoryId,
+                      questionIndex: _currentIndex,
                       answered: _answered,
                       correct: _answered && !_timedOut && _selectedAnswer == q.correctIndex,
                       timedOut: _timedOut,
@@ -716,101 +720,69 @@ class _BlobBackgroundPainter extends CustomPainter {
   bool shouldRepaint(_BlobBackgroundPainter _) => false;
 }
 
-// ─── Question Graphic (emoji-based, relevant to question topic) ───────────────
+// ─── Question Graphic (SVG animal illustration + concentric rings) ────────────
 
 class _QuestionGraphic extends StatelessWidget {
-  final String emoji;
+  final String question;
   final int categoryId;
+  final int questionIndex;
   final bool answered;
   final bool correct;
   final bool timedOut;
 
   const _QuestionGraphic({
-    required this.emoji,
+    required this.question,
     required this.categoryId,
+    required this.questionIndex,
     required this.answered,
     required this.correct,
     required this.timedOut,
   });
 
-  static const _palette = [
-    Color(0xFF7B8C3A), // olive green
-    Color(0xFF5BA8E8), // sky blue
-    Color(0xFF9B8BBF), // purple
-    Color(0xFFE8784A), // orange
-    Color(0xFF4ECDC4), // teal
-    Color(0xFFE87A50), // red-orange
-    Color(0xFF6BBF6F), // green
-    Color(0xFFF5C842), // yellow
-  ];
-
-  Color get _bubbleColor {
-    if (answered && !timedOut) return correct ? _kCorrect : _kWrong;
-    return _palette[categoryId % _palette.length];
-  }
-
-  static String _emojiToAssetPath(String emoji) {
-    final runes = emoji.runes
-        .where((r) => r != 0xFE0F && r != 0x200D)
-        .toList();
-    if (runes.isEmpty) return '';
-    final hex = runes.map((r) => r.toRadixString(16).toUpperCase()).join('-');
-    return 'assets/images/openmoji/$hex.svg';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final c = _bubbleColor;
+    final data = illustrationFor(question, categoryId: categoryId, questionIndex: questionIndex);
+    final Color ringColor = timedOut
+        ? const Color(0xFFBBBBBB)
+        : answered
+            ? (correct ? const Color(0xFF6BBF6F) : const Color(0xFFE85A5A))
+            : data.color;
+
     return SizedBox(
-      width: 180, height: 180,
+      width: 200,
+      height: 200,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Soft background circle (like Pinterest style)
           Container(
-            width: 180, height: 180,
+            width: 148,
+            height: 148,
             decoration: BoxDecoration(
+              color: ringColor.withValues(alpha: 0.10),
               shape: BoxShape.circle,
-              color: c.withValues(alpha: 0.12),
-              boxShadow: [
-                BoxShadow(
-                  color: c.withValues(alpha: 0.18),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
             ),
           ),
-          // Large flat illustration filling the circle
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: SvgPicture.asset(
-              _emojiToAssetPath(emoji),
-              fit: BoxFit.contain,
-              placeholderBuilder: (_) => Text(
-                emoji,
-                style: const TextStyle(fontSize: 60),
-                textAlign: TextAlign.center,
-              ),
+          Container(
+            width: 116,
+            height: 116,
+            decoration: BoxDecoration(
+              color: ringColor.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
             ),
           ),
-          // Feedback badge
-          if (answered && !timedOut)
-            Positioned(
-              bottom: 6, right: 6,
-              child: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color: correct ? _kCorrect : _kWrong,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2.5),
-                ),
-                child: Icon(
-                  correct ? Icons.check_rounded : Icons.close_rounded,
-                  color: Colors.white, size: 18,
-                ),
-              ),
+          Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              color: ringColor.withValues(alpha: 0.22),
+              shape: BoxShape.circle,
             ),
+          ),
+          SvgPicture.string(
+            data.svg,
+            width: 100,
+            height: 100,
+          ),
         ],
       ),
     );

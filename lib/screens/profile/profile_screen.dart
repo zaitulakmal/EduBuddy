@@ -4,6 +4,7 @@ import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
+import '../privacy_policy_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -21,6 +22,7 @@ class ProfileScreen extends StatelessWidget {
               _buildBadges(context, provider),
               _buildStats(context, provider),
               _buildLanguageToggle(context, provider),
+              _buildPrivacyLink(context),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
@@ -416,6 +418,22 @@ class ProfileScreen extends StatelessWidget {
                 activeThumbColor: AppColors.primary,
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrivacyLink(BuildContext context) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        child: TextButton(
+          onPressed: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen())),
+          child: const Text(
+            'Privacy Policy',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
         ),
       ),
