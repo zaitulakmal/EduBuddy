@@ -5,6 +5,7 @@ import '../../models/quiz_model.dart';
 import '../../providers/app_provider.dart';
 import '../../widgets/bouncy_button.dart';
 import '../../widgets/animal_illustrations.dart';
+import '../../widgets/subject_illustrations.dart';
 
 // ── Reference-matched palette ─────────────────────────────────────────────────
 const _kBgOrange    = Color(0xFFE8784A);
@@ -319,6 +320,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
                     scale: _monsterAnim,
                     child: _QuestionGraphic(
                       question: q.question,
+                      answerHint: q.options[q.correctIndex],
                       categoryId: widget.quiz.categoryId,
                       questionIndex: _currentIndex,
                       answered: _answered,
@@ -722,8 +724,24 @@ class _BlobBackgroundPainter extends CustomPainter {
 
 // ─── Question Graphic (SVG animal illustration + concentric rings) ────────────
 
+// Category ids seeded in database_helper.dart (insertion order, AUTOINCREMENT from 1)
+const _kNumbersCategoryId = 2;
+const _kMathCategoryId = 7;
+
+const _kNumberPalette = [
+  Color(0xFFE8784A), Color(0xFF7B6EC8), Color(0xFF6BBF6F), Color(0xFF5BA8E8),
+  Color(0xFFE85B9B), Color(0xFFF4C962), Color(0xFF4ECDC4), Color(0xFFFF6B6B),
+];
+
+int? _extractNumber(String text) {
+  final match = RegExp(r'\d+').firstMatch(text);
+  if (match == null) return null;
+  return int.tryParse(match.group(0)!);
+}
+
 class _QuestionGraphic extends StatelessWidget {
   final String question;
+  final String answerHint;
   final int categoryId;
   final int questionIndex;
   final bool answered;
@@ -732,6 +750,7 @@ class _QuestionGraphic extends StatelessWidget {
 
   const _QuestionGraphic({
     required this.question,
+    required this.answerHint,
     required this.categoryId,
     required this.questionIndex,
     required this.answered,
@@ -739,15 +758,52 @@ class _QuestionGraphic extends StatelessWidget {
     required this.timedOut,
   });
 
+  bool get _isMathCategory => categoryId == _kMathCategoryId || categoryId == _kNumbersCategoryId;
+
+  Color _ringColorFor(Color base) {
+    if (timedOut) return const Color(0xFFBBBBBB);
+    if (answered) return correct ? const Color(0xFF6BBF6F) : const Color(0xFFE85A5A);
+    return base;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final data = illustrationFor(question, categoryId: categoryId, questionIndex: questionIndex);
-    final Color ringColor = timedOut
-        ? const Color(0xFFBBBBBB)
-        : answered
-            ? (correct ? const Color(0xFF6BBF6F) : const Color(0xFFE85A5A))
-            : data.color;
+    if (_isMathCategory) {
+      final number = _extractNumber(question) ?? questionIndex;
+      final badgeColor = _kNumberPalette[number.abs() % _kNumberPalette.length];
+      return _buildRings(
+        ringColor: _ringColorFor(badgeColor),
+        center: Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [badgeColor, badgeColor.withValues(alpha: 0.75)]),
+            shape: BoxShape.circle,
+            boxShadow: [BoxShadow(color: badgeColor.withValues(alpha: 0.4), blurRadius: 10, offset: const Offset(0, 4))],
+          ),
+          child: Center(
+            child: Text(
+              '$number',
+              style: TextStyle(
+                fontSize: number.toString().length > 2 ? 32 : 42,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
+    final data = subjectIllustrationFor('$question $answerHint') ??
+        illustrationFor(question, categoryId: categoryId, questionIndex: questionIndex);
+    return _buildRings(
+      ringColor: _ringColorFor(data.color),
+      center: SvgPicture.string(data.svg, width: 100, height: 100),
+    );
+  }
+
+  Widget _buildRings({required Color ringColor, required Widget center}) {
     return SizedBox(
       width: 200,
       height: 200,
@@ -778,11 +834,7 @@ class _QuestionGraphic extends StatelessWidget {
               shape: BoxShape.circle,
             ),
           ),
-          SvgPicture.string(
-            data.svg,
-            width: 100,
-            height: 100,
-          ),
+          center,
         ],
       ),
     );

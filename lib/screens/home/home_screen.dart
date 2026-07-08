@@ -13,6 +13,7 @@ import '../tracing/tracing_screen.dart';
 import '../drawing/drawing_studio_screen.dart';
 import '../coloring/coloring_screen.dart';
 import '../counting/counting_screen.dart';
+import '../games/memory_match_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -199,10 +200,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildQuickStartGrid(BuildContext context, AppProvider provider) {
     final items = [
-      _QuickItem('Videos', '${provider.videos.length} available', AppColors.gradients[5], _VideoGraphic(), () => _navigate(context, 1)),
-      _QuickItem('Quizzes', '${provider.quizzes.length} quizzes', AppColors.gradients[3], _QuizGraphic(), () => _navigate(context, 2)),
-      _QuickItem('Stories', '${provider.storybooks.length} books', AppColors.gradients[0], _StoryGraphic(), () => _navigate(context, 3)),
-      _QuickItem('Worksheets', '${provider.worksheets.length} sheets', AppColors.gradients[2], _WorksheetGraphic(), () => _navigateToWorksheets(context)),
+      _QuickItem('Videos', '${provider.videos.length} available', AppColors.gradients[5], const _EmojiGraphic('▶️'), () => _navigate(context, 1)),
+      _QuickItem('Quizzes', '${provider.quizzes.length} quizzes', AppColors.gradients[3], const _EmojiGraphic('🧠'), () => _navigate(context, 2)),
+      _QuickItem('Stories', '${provider.storybooks.length} books', AppColors.gradients[0], const _EmojiGraphic('📖'), () => _navigate(context, 3)),
+      _QuickItem('Worksheets', '${provider.worksheets.length} sheets', AppColors.gradients[2], const _EmojiGraphic('📄'), () => _navigateToWorksheets(context)),
     ];
 
     return SliverToBoxAdapter(
@@ -212,6 +213,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
+            primary: false,
+            padding: EdgeInsets.zero,
             physics: const NeverScrollableScrollPhysics(),
             crossAxisSpacing: 14,
             mainAxisSpacing: 14,
@@ -220,8 +223,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               return AnimationConfiguration.staggeredGrid(
                 position: entry.key,
                 columnCount: 2,
-                duration: const Duration(milliseconds: 400),
+                duration: const Duration(milliseconds: 250),
                 child: ScaleAnimation(
+                  scale: 0.85,
                   child: FadeInAnimation(
                     child: _QuickStartCard(item: entry.value, floatAnim: _floatAnim),
                   ),
@@ -258,6 +262,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         gradient: [const Color(0xFF7BC67E), const Color(0xFF4CAF50)],
         graphic: _CountingGraphic(),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CountingScreen())),
+      ),
+      _CreativeItem(
+        title: 'Memory\nMatch',
+        subtitle: 'Find pairs!',
+        gradient: [const Color(0xFF7B6EC8), const Color(0xFF5B4DA8)],
+        graphic: _MemoryGraphic(),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoryMatchScreen())),
       ),
     ];
 
@@ -675,150 +686,17 @@ class _AvatarPainter extends CustomPainter {
   bool shouldRepaint(_AvatarPainter old) => old.emoji != emoji;
 }
 
-// Videos graphic — play button with animated rings
-class _VideoGraphic extends StatelessWidget {
+// Simple emoji graphic — used for Quick Start cards (Videos, Quizzes, Stories, Worksheets)
+class _EmojiGraphic extends StatelessWidget {
+  final String emoji;
+  const _EmojiGraphic(this.emoji);
+
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(painter: _VideoIconPainter());
-  }
-}
-
-class _VideoIconPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2, cy = size.height / 2;
-    final r = size.shortestSide / 2;
-    // Outer ring
-    canvas.drawCircle(Offset(cx, cy), r, Paint()..color = Colors.white.withValues(alpha: 0.25));
-    // Inner ring
-    canvas.drawCircle(Offset(cx, cy), r * 0.72, Paint()..color = Colors.white.withValues(alpha: 0.35));
-    // Play triangle
-    final path = Path()
-      ..moveTo(cx - r * 0.22, cy - r * 0.35)
-      ..lineTo(cx + r * 0.40, cy)
-      ..lineTo(cx - r * 0.22, cy + r * 0.35)
-      ..close();
-    canvas.drawPath(path, Paint()..color = Colors.white);
-  }
-
-  @override
-  bool shouldRepaint(_VideoIconPainter _) => false;
-}
-
-// Quiz graphic — brain + sparkles
-class _QuizGraphic extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(painter: _QuizIconPainter());
-  }
-}
-
-class _QuizIconPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2, cy = size.height / 2;
-    final r = size.shortestSide / 2;
-    final paint = Paint()..color = Colors.white..style = PaintingStyle.fill;
-
-    // Simple brain shape — two overlapping ovals
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx - r * 0.2, cy), width: r * 1.1, height: r * 1.3), paint);
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx + r * 0.2, cy), width: r * 1.1, height: r * 1.3), paint);
-    // Centre divider
-    canvas.drawRect(Rect.fromLTWH(cx - 2, cy - r * 0.55, 4, r * 1.1), Paint()..color = Colors.white.withValues(alpha: 0.2));
-    // Question mark
-    final tp = TextPainter(
-      text: TextSpan(text: '?', style: TextStyle(fontSize: r * 0.8, fontWeight: FontWeight.w900, color: Colors.white.withValues(alpha: 0.5))),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
-  }
-
-  @override
-  bool shouldRepaint(_QuizIconPainter _) => false;
-}
-
-// Story graphic — open book
-class _StoryGraphic extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(painter: _StoryIconPainter());
-  }
-}
-
-class _StoryIconPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2, cy = size.height / 2;
-    final w = size.width, h = size.height;
-    final paint = Paint()..color = Colors.white..style = PaintingStyle.fill;
-
-    // Left page
-    final leftPage = RRect.fromLTRBR(cx - w * 0.42, cy - h * 0.35, cx, cy + h * 0.38, const Radius.circular(6));
-    canvas.drawRRect(leftPage, paint);
-    // Right page
-    final rightPage = RRect.fromLTRBR(cx, cy - h * 0.35, cx + w * 0.42, cy + h * 0.38, const Radius.circular(6));
-    canvas.drawRRect(rightPage, Paint()..color = Colors.white.withValues(alpha: 0.75));
-    // Lines on left page
-    final linePaint = Paint()..color = Colors.white.withValues(alpha: 0.35)..strokeWidth = 1.5;
-    for (int i = 0; i < 4; i++) {
-      final y = cy - h * 0.18 + i * h * 0.13;
-      canvas.drawLine(Offset(cx - w * 0.33, y), Offset(cx - w * 0.08, y), linePaint);
-    }
-    // Spine
-    canvas.drawRect(Rect.fromCenter(center: Offset(cx, cy), width: 4, height: h * 0.73),
-        Paint()..color = Colors.white.withValues(alpha: 0.5));
-  }
-
-  @override
-  bool shouldRepaint(_StoryIconPainter _) => false;
-}
-
-// Worksheet graphic — pencil on paper
-class _WorksheetGraphic extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(painter: _WorksheetIconPainter());
-  }
-}
-
-class _WorksheetIconPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2, cy = size.height / 2;
-    final w = size.width, h = size.height;
-    final white = Paint()..color = Colors.white..style = PaintingStyle.fill;
-    final faint = Paint()..color = Colors.white.withValues(alpha: 0.4)..style = PaintingStyle.fill;
-
-    // Paper
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx - w * 0.04, cy + h * 0.03), width: w * 0.68, height: h * 0.78), const Radius.circular(6)),
-      white,
+    return Center(
+      child: Text(emoji, style: const TextStyle(fontSize: 44)),
     );
-    // Lines
-    final lp = Paint()..color = Colors.white.withValues(alpha: 0.3)..strokeWidth = 1.5;
-    for (int i = 0; i < 4; i++) {
-      final y = cy - h * 0.2 + i * h * 0.13;
-      canvas.drawLine(Offset(cx - w * 0.24, y), Offset(cx + w * 0.14, y), lp);
-    }
-    // Pencil
-    final pencilPath = Path();
-    pencilPath.moveTo(cx + w * 0.22, cy - h * 0.35);
-    pencilPath.lineTo(cx + w * 0.38, cy - h * 0.19);
-    pencilPath.lineTo(cx + w * 0.10, cy + h * 0.35);
-    pencilPath.lineTo(cx - w * 0.06, cy + h * 0.19);
-    pencilPath.close();
-    canvas.drawPath(pencilPath, faint);
-    // Pencil tip
-    final tipPath = Path();
-    tipPath.moveTo(cx + w * 0.10, cy + h * 0.35);
-    tipPath.lineTo(cx - w * 0.06, cy + h * 0.19);
-    tipPath.lineTo(cx + w * 0.02, cy + h * 0.44);
-    tipPath.close();
-    canvas.drawPath(tipPath, Paint()..color = Colors.white.withValues(alpha: 0.7));
   }
-
-  @override
-  bool shouldRepaint(_WorksheetIconPainter _) => false;
 }
 
 // Drawing Studio graphic — palette
@@ -916,6 +794,50 @@ class _ColoringIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ColoringIconPainter _) => false;
+}
+
+// Memory Match graphic — two flipped cards
+class _MemoryGraphic extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(painter: _MemoryIconPainter());
+  }
+}
+
+class _MemoryIconPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final cardW = w * 0.42, cardH = h * 0.62;
+
+    // Back card (left, tilted)
+    canvas.save();
+    canvas.translate(w * 0.36, h * 0.52);
+    canvas.rotate(-0.18);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: cardW, height: cardH), const Radius.circular(8)),
+      Paint()..color = Colors.white.withValues(alpha: 0.55),
+    );
+    canvas.restore();
+
+    // Front card (right, tilted, with star)
+    canvas.save();
+    canvas.translate(w * 0.62, h * 0.48);
+    canvas.rotate(0.14);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: cardW, height: cardH), const Radius.circular(8)),
+      Paint()..color = Colors.white,
+    );
+    final tp = TextPainter(
+      text: TextSpan(text: '★', style: TextStyle(fontSize: cardH * 0.42, color: const Color(0xFF7B6EC8).withValues(alpha: 0.7))),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_MemoryIconPainter _) => false;
 }
 
 // Counting graphic — floating stars

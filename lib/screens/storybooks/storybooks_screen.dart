@@ -5,6 +5,7 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/storybook_model.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/header_back_button.dart';
 import 'story_reader_screen.dart';
 
 class StorybooksScreen extends StatelessWidget {
@@ -18,7 +19,7 @@ class StorybooksScreen extends StatelessWidget {
           backgroundColor: AppColors.background,
           body: CustomScrollView(
             slivers: [
-              _buildAppBar(),
+              _buildAppBar(context),
               _buildGrid(context, provider),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
@@ -28,7 +29,7 @@ class StorybooksScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(BuildContext context) {
     return SliverToBoxAdapter(
       child: Container(
         decoration: const BoxDecoration(
@@ -45,6 +46,7 @@ class StorybooksScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
             child: Row(
               children: [
+                const HeaderBackButton(),
                 const Text('📖', style: TextStyle(fontSize: 32)),
                 const SizedBox(width: 12),
                 const Column(

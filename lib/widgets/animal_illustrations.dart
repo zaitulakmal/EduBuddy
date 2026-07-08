@@ -376,6 +376,9 @@ const _animalKeys = [
   'fox', 'koala', 'bat', 'octopus', 'wolf',
 ];
 
+/// All 17 animal illustrations (no subject icons) — used by games like Memory Match.
+List<AnimalData> get allAnimals => _animalKeys.map((k) => _map[k]!).toList();
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 AnimalData illustrationFor(String question, {int categoryId = 0, int questionIndex = 0}) {

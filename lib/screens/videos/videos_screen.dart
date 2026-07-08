@@ -7,6 +7,7 @@ import '../../models/video_model.dart';
 import '../../models/category_model.dart';
 import '../../widgets/bouncy_button.dart';
 import '../../widgets/category_chip.dart';
+import '../../widgets/header_back_button.dart';
 import 'video_player_screen.dart';
 
 class VideosScreen extends StatefulWidget {
@@ -61,6 +62,7 @@ class _VideosScreenState extends State<VideosScreen> {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
             child: Row(
               children: [
+                const HeaderBackButton(),
                 const Text('🎬', style: TextStyle(fontSize: 32)),
                 const SizedBox(width: 12),
                 const Column(
