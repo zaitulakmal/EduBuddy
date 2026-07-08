@@ -16,73 +16,42 @@ EduBuddy - Learning for Kids
 Fun quizzes, stories, videos & games for kids to learn animals, math & more!
 ```
 
-### Full description (4000 chars max) — English
+### Full description — English
 ```
-EduBuddy is a colorful, fun, and safe learning app designed for children aged 4–12. With interactive quizzes, animated storybooks, educational videos, memory games, and creative activities, EduBuddy makes learning feel like play!
+EduBuddy is a colorful, safe learning app for kids aged 4–12 that makes learning feel like play!
 
-🦁 ANIMAL KINGDOM QUIZZES
-Test your child's knowledge with fun quizzes featuring beautiful animal illustrations — lions, elephants, dolphins, and more! Every question comes with colorful, hand-crafted animal graphics that make learning exciting.
-
-🧠 MEMORY MATCH — 30 LEVELS!
-Flip cards and find pairs across 6 exciting worlds: Animal Kingdom, Fruit Basket, Ocean World, Speedy Wheels, Yummy Food, and Space Explorer. Earn up to 3 stars per level and unlock them all!
-
-📚 INTERACTIVE STORYBOOKS
-Enjoy beautifully illustrated stories that teach valuable life lessons — bravery, kindness, and friendship — in both English and Bahasa Malaysia.
-
-🎬 EDUCATIONAL VIDEOS
-Watch fun animated videos covering animals, numbers, colors, science, music, and space — with cartoon scenes, sing-along lyrics, and characters that move!
-
-🎨 CREATIVE ACTIVITIES
-Coloring pages, tracing exercises (A–Z and 0–9), drawing studio, and counting games to develop fine motor skills and creativity.
-
-✏️ WORKSHEETS & PRACTICE
-Worksheets covering English, Math, and more for hands-on learning.
-
-🌍 BILINGUAL SUPPORT
-Content in both English and Bahasa Malaysia.
+🦁 QUIZZES — Fun questions with beautiful animal illustrations
+🧠 MEMORY MATCH — 30 levels across 6 worlds: animals, fruits, ocean, vehicles, food & space
+📚 STORYBOOKS — Illustrated stories in English & Bahasa Malaysia
+🎬 VIDEOS — Animated lessons on animals, numbers, colors, science & space
+🎨 CREATIVE — Coloring, tracing (A–Z, 0–9), drawing & counting games
+✏️ WORKSHEETS — English, Math and more
 
 ⭐ SAFE & AD-FREE
-No ads, no in-app purchases, no internet tracking. All progress is stored securely on your device.
+• No ads, no in-app purchases, no tracking
+• Works 100% offline — all progress stays on your device
+• Bilingual: English & Bahasa Malaysia
 
-WHY PARENTS LOVE EDUBUDDY:
-• 100% safe for kids — no ads or external links
-• Works fully offline
-• Tracks learning progress and achievements with stars
-• Designed for ages 4–12
-• Supports both English and Bahasa Malaysia
-
-Download EduBuddy today and make learning an adventure! 🌟
+Download EduBuddy and make learning an adventure! 🌟
 ```
 
 ### Full description — Bahasa Malaysia (for MS locale listing)
 ```
-EduBuddy ialah aplikasi pembelajaran yang berwarna-warni, menyeronokkan dan selamat untuk kanak-kanak berumur 4–12 tahun. Dengan kuiz interaktif, buku cerita animasi, video pendidikan, permainan memori, dan aktiviti kreatif, EduBuddy menjadikan pembelajaran seperti bermain!
+EduBuddy ialah aplikasi pembelajaran berwarna-warni dan selamat untuk kanak-kanak 4–12 tahun — belajar sambil bermain!
 
-🦁 KUIZ DUNIA HAIWAN
-Uji pengetahuan anak anda dengan kuiz menyeronokkan yang menampilkan ilustrasi haiwan yang cantik — singa, gajah, dolfin, dan banyak lagi!
-
-🧠 MEMORY MATCH — 30 TAHAP!
-Terbalikkan kad dan cari pasangan merentasi 6 dunia menarik: Dunia Haiwan, Bakul Buah, Dunia Lautan, Kenderaan Laju, Makanan Sedap, dan Penjelajah Angkasa. Kumpul sehingga 3 bintang setiap tahap!
-
-📚 BUKU CERITA INTERAKTIF
-Nikmati cerita yang diilustrasi dengan cantik yang mengajar nilai hidup penting — keberanian, kebaikan, dan persahabatan — dalam Bahasa Inggeris dan Bahasa Malaysia.
-
-🎬 VIDEO PENDIDIKAN
-Tonton video animasi menyeronokkan mengenai haiwan, nombor, warna, sains, muzik dan angkasa — dengan babak kartun dan lirik nyanyian!
-
-🎨 AKTIVITI KREATIF
-Halaman mewarna, latihan menyurih (A–Z dan 0–9), studio melukis, dan permainan mengira.
-
-✏️ LEMBARAN KERJA & LATIHAN
-Lembaran kerja untuk Bahasa Inggeris, Matematik, dan banyak lagi.
-
-🌍 SOKONGAN DWIBAHASA
-Kandungan dalam Bahasa Inggeris dan Bahasa Malaysia.
+🦁 KUIZ — Soalan menyeronokkan dengan ilustrasi haiwan yang cantik
+🧠 MEMORY MATCH — 30 tahap merentasi 6 dunia: haiwan, buah, lautan, kenderaan, makanan & angkasa
+📚 BUKU CERITA — Cerita bergambar dalam BI & BM
+🎬 VIDEO — Pelajaran animasi: haiwan, nombor, warna, sains & angkasa
+🎨 KREATIF — Mewarna, menyurih (A–Z, 0–9), melukis & mengira
+✏️ LEMBARAN KERJA — Bahasa Inggeris, Matematik & lagi
 
 ⭐ SELAMAT & TANPA IKLAN
-Tiada iklan, tiada pembelian dalam aplikasi, tiada penjejakan internet. Semua kemajuan disimpan dengan selamat di peranti anda.
+• Tiada iklan, tiada pembelian dalam apl, tiada penjejakan
+• 100% offline — semua kemajuan kekal di peranti anda
+• Dwibahasa: Bahasa Inggeris & Bahasa Malaysia
 
-Muat turun EduBuddy hari ini dan jadikan pembelajaran satu pengembaraan! 🌟
+Muat turun EduBuddy dan jadikan pembelajaran satu pengembaraan! 🌟
 ```
 
 ---
