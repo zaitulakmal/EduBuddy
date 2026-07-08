@@ -28,7 +28,9 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.edubuddy.edubuddy"
+        // Play Store identity — permanent, do not change after first upload.
+        // (namespace above stays com.edubuddy.edubuddy; only the published ID changes)
+        applicationId = "com.zaitulakmal.edubuddy"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
