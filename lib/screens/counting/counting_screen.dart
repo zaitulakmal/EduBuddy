@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../../theme/app_theme.dart';
+import '../../services/sound_service.dart';
 
 class _FloatItem {
   Offset position;
@@ -115,6 +116,7 @@ class _CountingScreenState extends State<CountingScreen>
 
     if (item.type == _getTargetType()) {
       // Correct tap
+      SoundService.instance.star();
       setState(() {
         item.counted = true;
         _tappedCount++;
@@ -124,6 +126,7 @@ class _CountingScreenState extends State<CountingScreen>
       }
     } else {
       // Wrong item tapped
+      SoundService.instance.wrong();
       setState(() {
         _wrongAnswer = true;
         _lives--;
@@ -146,6 +149,7 @@ class _CountingScreenState extends State<CountingScreen>
       _celebrating = true;
       _score += _targetCount * 10 * _level;
     });
+    SoundService.instance.win();
     _confettiController.play();
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) {

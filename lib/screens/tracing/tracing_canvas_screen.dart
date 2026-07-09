@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../services/sound_service.dart';
 
 // Word associations for letters
 const Map<String, String> _letterWords = {
@@ -89,6 +90,7 @@ class _TracingCanvasScreenState extends State<TracingCanvasScreen>
   void _celebrate() {
     if (_showCelebration) return;
     setState(() => _showCelebration = true);
+    SoundService.instance.complete();
     _confettiController.play();
     Future.delayed(const Duration(milliseconds: 3200), () {
       if (mounted) setState(() => _showCelebration = false);

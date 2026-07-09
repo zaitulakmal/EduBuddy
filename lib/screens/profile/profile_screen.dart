@@ -4,6 +4,7 @@ import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../services/sound_service.dart';
 import '../privacy_policy_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -22,6 +23,7 @@ class ProfileScreen extends StatelessWidget {
               _buildBadges(context, provider),
               _buildStats(context, provider),
               _buildLanguageToggle(context, provider),
+              const SliverToBoxAdapter(child: _SoundSettingsCard()),
               _buildPrivacyLink(context),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
@@ -584,6 +586,109 @@ class _StatTile extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Sound settings card ──────────────────────────────────────────────────────
+
+class _SoundSettingsCard extends StatefulWidget {
+  const _SoundSettingsCard();
+
+  @override
+  State<_SoundSettingsCard> createState() => _SoundSettingsCardState();
+}
+
+class _SoundSettingsCardState extends State<_SoundSettingsCard> {
+  final _sound = SoundService.instance;
+
+  Widget _row({
+    required String emoji,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Row(
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 28)),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textDark,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Switch(
+          value: value,
+          onChanged: onChanged,
+          activeThumbColor: AppColors.primary,
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            _row(
+              emoji: '🎵',
+              title: 'Music',
+              subtitle: _sound.musicEnabled ? 'On' : 'Off',
+              value: _sound.musicEnabled,
+              onChanged: (v) async {
+                await _sound.setMusicEnabled(v);
+                setState(() {});
+              },
+            ),
+            const Divider(height: 24),
+            _row(
+              emoji: '🔔',
+              title: 'Sound Effects',
+              subtitle: _sound.sfxEnabled ? 'On' : 'Off',
+              value: _sound.sfxEnabled,
+              onChanged: (v) async {
+                await _sound.setSfxEnabled(v);
+                if (v) _sound.correct();
+                setState(() {});
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

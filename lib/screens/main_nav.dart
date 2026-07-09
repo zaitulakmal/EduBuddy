@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../services/sound_service.dart';
 import 'home/home_screen.dart';
 import 'videos/videos_screen.dart';
 import 'quizzes/quizzes_screen.dart';
@@ -15,6 +16,12 @@ class MainNav extends StatefulWidget {
 
 class _MainNavState extends State<MainNav> {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    SoundService.instance.playMusic('calm');
+  }
 
   final List<Widget> _screens = const [
     HomeScreen(),
@@ -47,7 +54,10 @@ class _MainNavState extends State<MainNav> {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           child: BottomNavigationBar(
             currentIndex: _selectedIndex,
-            onTap: (i) => setState(() => _selectedIndex = i),
+            onTap: (i) {
+              SoundService.instance.tap();
+              setState(() => _selectedIndex = i);
+            },
             type: BottomNavigationBarType.fixed,
             backgroundColor: Colors.white,
             elevation: 0,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../../theme/app_theme.dart';
+import '../../services/sound_service.dart';
 
 // Each coloring page is a list of regions, each region is a path builder + default color
 class _Region {
@@ -283,6 +284,7 @@ class _ColoringScreenState extends State<ColoringScreen>
     for (final region in regions.reversed) {
       final path = region.pathBuilder(_canvasSize);
       if (path.contains(localPos)) {
+        SoundService.instance.tap();
         setState(() => _fills['${_pageIndex}_${region.id}'] = _selectedColor);
         return;
       }
@@ -296,6 +298,7 @@ class _ColoringScreenState extends State<ColoringScreen>
     final allFilled = regions.every((r) => _fills.containsKey('${_pageIndex}_${r.id}'));
     if (allFilled && !_celebrating) {
       setState(() => _celebrating = true);
+      SoundService.instance.complete();
       _confettiController.play();
       Future.delayed(const Duration(seconds: 4), () {
         if (mounted) setState(() => _celebrating = false);

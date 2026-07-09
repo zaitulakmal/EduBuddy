@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/animal_illustrations.dart';
 import '../../widgets/bouncy_button.dart';
 import '../../services/ad_helper.dart';
+import '../../services/sound_service.dart';
 
 const _kBg = Color(0xFFFFF4E0);
 const _kPurple = Color(0xFF5B4DA8);
@@ -391,6 +392,7 @@ class _MemoryGameScreenState extends State<_MemoryGameScreen>
   void initState() {
     super.initState();
     _confetti = ConfettiController(duration: const Duration(seconds: 2));
+    SoundService.instance.playMusic('playful');
     _go(widget.startIndex);
   }
 
@@ -398,6 +400,7 @@ class _MemoryGameScreenState extends State<_MemoryGameScreen>
   void dispose() {
     _confetti.dispose();
     _ticker?.cancel();
+    SoundService.instance.playMusic('calm');
     super.dispose();
   }
 
@@ -434,6 +437,7 @@ class _MemoryGameScreenState extends State<_MemoryGameScreen>
   void _onCardTap(int index) {
     if (_locked || _cards[index].isFlipped || _cards[index].isMatched || _won) return;
 
+    SoundService.instance.flip();
     setState(() => _cards[index].isFlipped = true);
 
     if (_firstFlippedIndex == null) {
@@ -446,6 +450,7 @@ class _MemoryGameScreenState extends State<_MemoryGameScreen>
     _firstFlippedIndex = null;
 
     if (_cards[firstIndex].pairId == _cards[index].pairId) {
+      SoundService.instance.match();
       setState(() {
         _cards[firstIndex].isMatched = true;
         _cards[index].isMatched = true;
@@ -481,6 +486,7 @@ class _MemoryGameScreenState extends State<_MemoryGameScreen>
       _earnedStars = stars;
       _newBest = stars > prev;
     });
+    SoundService.instance.win();
     _confetti.play();
     await _Progress.saveStars(_index, stars);
   }

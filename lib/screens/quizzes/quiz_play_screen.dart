@@ -6,6 +6,7 @@ import '../../providers/app_provider.dart';
 import '../../widgets/bouncy_button.dart';
 import '../../widgets/animal_illustrations.dart';
 import '../../widgets/subject_illustrations.dart';
+import '../../services/sound_service.dart';
 
 // ── Reference-matched palette ─────────────────────────────────────────────────
 const _kBgOrange    = Color(0xFFE8784A);
@@ -105,6 +106,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
     if (status == AnimationStatus.completed && !_answered) {
       if (!mounted) return;
       setState(() { _answered = true; _timedOut = true; _streak = 0; });
+      SoundService.instance.wrong();
       _shakeCtrl.forward(from: 0);
       _monsterBounce.forward(from: 0);
       Future.delayed(const Duration(milliseconds: 1800), () { if (mounted) _next(); });
@@ -137,9 +139,11 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
     });
     _monsterBounce.forward(from: 0);
     if (correct) {
+      SoundService.instance.correct();
       _confettiCtrl.play();
       _scorePopCtrl.forward(from: 0);
     } else {
+      SoundService.instance.wrong();
       _shakeCtrl.forward(from: 0);
     }
     Future.delayed(const Duration(milliseconds: 1900), () { if (mounted) _next(); });
@@ -160,6 +164,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
       _timerCtrl.stop();
       widget.provider.saveQuizScore(widget.quiz.id!, _score);
       setState(() => _quizDone = true);
+      SoundService.instance.win();
       _confettiCtrl.play();
     }
   }
