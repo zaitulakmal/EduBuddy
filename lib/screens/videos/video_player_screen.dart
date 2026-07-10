@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../models/video_model.dart';
 import '../../providers/app_provider.dart';
+import '../../services/sound_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
 
@@ -39,6 +40,18 @@ const _kLyrics = <String, List<String>>{
 
 List<String> _lyricsFor(String emoji) =>
     _kLyrics[emoji] ?? ['⭐  Learning is fun!', '🚀  Keep exploring!', '🧠  You are so smart!', '🎉  Great job!'];
+
+// Themed background music per video
+String _musicFor(String emoji) {
+  switch (emoji) {
+    case '🐄': case '🦊': return 'jungle';
+    case '🐠': return 'underwater';
+    case '🚀': return 'space';
+    case '🎶': return 'stage';
+    case '🤖': case '🍎': case '🔤': case '⭐': return 'playful';
+    default: return 'calm';
+  }
+}
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
 class VideoPlayerScreen extends StatefulWidget {
@@ -97,12 +110,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _lyricTimer?.cancel();
     _stageTimer?.cancel();
     _progressTimer?.cancel();
+    SoundService.instance.stopSpeaking();
+    if (_isPlaying) SoundService.instance.playMusic('calm');
     super.dispose();
   }
 
   void _togglePlay() {
     setState(() => _isPlaying = !_isPlaying);
     if (_isPlaying) {
+      // Themed soundtrack + narrator reads the first line right away.
+      SoundService.instance.playMusic(_musicFor(widget.video.thumbnailEmoji));
+      SoundService.instance
+          .speak(_lyricsFor(widget.video.thumbnailEmoji)[_lyricIndex]);
       _startTimers();
       if (!_hasMarkedWatched) {
         _hasMarkedWatched = true;
@@ -115,15 +134,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       }
     } else {
       _stopTimers();
+      SoundService.instance.stopSpeaking();
+      SoundService.instance.playMusic('calm');
     }
   }
 
   void _startTimers() {
     _lyricTimer?.cancel();
-    _lyricTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    _lyricTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (!mounted) return;
       final lyrics = _lyricsFor(widget.video.thumbnailEmoji);
       setState(() => _lyricIndex = (_lyricIndex + 1) % lyrics.length);
+      SoundService.instance.speak(lyrics[_lyricIndex]);
     });
 
     _stageTimer?.cancel();

@@ -1,5 +1,6 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// App-wide audio: calm looping background music + soft sound effects.
@@ -21,6 +22,8 @@ class SoundService with WidgetsBindingObserver {
   final List<AudioPlayer> _sfxPool =
       List.generate(3, (i) => AudioPlayer(playerId: 'sfx$i'));
   int _sfxIndex = 0;
+  final FlutterTts _tts = FlutterTts();
+  bool _ttsReady = false;
 
   bool _musicEnabled = true;
   bool _sfxEnabled = true;
@@ -116,6 +119,45 @@ class SoundService with WidgetsBindingObserver {
   Future<void> star() => _sfx('star', 0.6);
   Future<void> win() => _sfx('win', 0.75);
   Future<void> complete() => _sfx('complete', 0.7);
+
+  // ── Narration (text-to-speech) ──────────────────────────────────────────────
+
+  Future<void> _initTts() async {
+    if (_ttsReady) return;
+    _ttsReady = true;
+    try {
+      await _tts.setLanguage('en-US');
+      await _tts.setSpeechRate(0.45); // slow & clear for kids
+      await _tts.setPitch(1.15); // slightly bright, friendly voice
+      await _tts.setVolume(1.0);
+    } catch (_) {
+      // Missing TTS engine on device — narration silently unavailable.
+    }
+  }
+
+  /// Speaks a line out loud (kid-friendly voice). Follows the sound-effects
+  /// toggle. Emoji and other symbols are stripped before speaking.
+  Future<void> speak(String text) async {
+    if (!_sfxEnabled) return;
+    final clean = text
+        .replaceAll(RegExp(r'[^\x20-\x7E]'), ' ') // drop emoji/symbols
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (clean.isEmpty) return;
+    await _initTts();
+    try {
+      await _tts.stop();
+      await _tts.speak(clean);
+    } catch (_) {
+      // Never let narration break playback.
+    }
+  }
+
+  Future<void> stopSpeaking() async {
+    try {
+      await _tts.stop();
+    } catch (_) {}
+  }
 
   // ── Lifecycle: pause music when app goes to background ─────────────────────
 
