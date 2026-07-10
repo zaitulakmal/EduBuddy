@@ -41,15 +41,18 @@ const _kLyrics = <String, List<String>>{
 List<String> _lyricsFor(String emoji) =>
     _kLyrics[emoji] ?? ['⭐  Learning is fun!', '🚀  Keep exploring!', '🧠  You are so smart!', '🎉  Great job!'];
 
-// Themed background music per video
+// Sing-along song per video (public-domain kids' melodies)
 String _musicFor(String emoji) {
   switch (emoji) {
-    case '🐄': case '🦊': return 'jungle';
-    case '🐠': return 'underwater';
-    case '🚀': return 'space';
-    case '🎶': return 'stage';
-    case '🤖': case '🍎': case '🔤': case '⭐': return 'playful';
-    default: return 'calm';
+    case '🐄': return 'song_farm'; // Old MacDonald
+    case '🦊': return 'jungle'; // safari groove
+    case '🐠': return 'song_boat'; // Row Row Row Your Boat
+    case '🚀': case '⭐': return 'song_twinkle'; // Twinkle Twinkle
+    case '🔤': return 'song_abc'; // ABC song
+    case '🤖': case '🍎': return 'song_oldman'; // This Old Man (counting)
+    case '🎶': return 'song_solfege'; // do-re-mi scale tune
+    case '🌈': case '🌱': return 'song_sunshine';
+    default: return 'song_sunshine';
   }
 }
 
@@ -110,7 +113,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _lyricTimer?.cancel();
     _stageTimer?.cancel();
     _progressTimer?.cancel();
-    SoundService.instance.stopSpeaking();
     if (_isPlaying) SoundService.instance.playMusic('calm');
     super.dispose();
   }
@@ -118,10 +120,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   void _togglePlay() {
     setState(() => _isPlaying = !_isPlaying);
     if (_isPlaying) {
-      // Themed soundtrack + narrator reads the first line right away.
+      // Start the sing-along song for this video.
       SoundService.instance.playMusic(_musicFor(widget.video.thumbnailEmoji));
-      SoundService.instance
-          .speak(_lyricsFor(widget.video.thumbnailEmoji)[_lyricIndex]);
       _startTimers();
       if (!_hasMarkedWatched) {
         _hasMarkedWatched = true;
@@ -134,7 +134,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       }
     } else {
       _stopTimers();
-      SoundService.instance.stopSpeaking();
       SoundService.instance.playMusic('calm');
     }
   }
@@ -145,7 +144,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       if (!mounted) return;
       final lyrics = _lyricsFor(widget.video.thumbnailEmoji);
       setState(() => _lyricIndex = (_lyricIndex + 1) % lyrics.length);
-      SoundService.instance.speak(lyrics[_lyricIndex]);
     });
 
     _stageTimer?.cancel();
