@@ -14,7 +14,6 @@ import '../drawing/drawing_studio_screen.dart';
 import '../coloring/coloring_screen.dart';
 import '../counting/counting_screen.dart';
 import '../games/memory_match_screen.dart';
-import '../games/word_builder_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -287,13 +286,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         gradient: [const Color(0xFF7B6EC8), const Color(0xFF5B4DA8)],
         graphic: _MemoryGraphic(),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoryMatchScreen())),
-      ),
-      _CreativeItem(
-        title: provider.t('Word\nBuilder', 'Eja\nPerkataan'),
-        subtitle: provider.t('b _ s = bus!', 'b _ s = bas!'),
-        gradient: [const Color(0xFF4ECDC4), const Color(0xFF2BA79E)],
-        graphic: _WordGraphic(),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WordBuilderScreen())),
       ),
     ];
 
@@ -826,46 +818,6 @@ class _ColoringIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ColoringIconPainter _) => false;
-}
-
-// Word Builder graphic — letter tiles "b _ s"
-class _WordGraphic extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(painter: _WordIconPainter());
-  }
-}
-
-class _WordIconPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width, h = size.height;
-    final tileW = w * 0.28, tileH = h * 0.42;
-    final labels = ['B', '_', 'S'];
-    for (int i = 0; i < 3; i++) {
-      final cx = w * (0.2 + i * 0.3);
-      final cy = h * 0.5 + (i == 1 ? h * 0.06 : 0);
-      final rect = RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(cx, cy), width: tileW, height: tileH),
-        const Radius.circular(6),
-      );
-      canvas.drawRRect(rect,
-          Paint()..color = Colors.white.withValues(alpha: i == 1 ? 0.55 : 1.0));
-      final tp = TextPainter(
-        text: TextSpan(
-            text: labels[i],
-            style: TextStyle(
-                fontSize: tileH * 0.55,
-                fontWeight: FontWeight.w900,
-                color: const Color(0xFF2BA79E))),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
-    }
-  }
-
-  @override
-  bool shouldRepaint(_WordIconPainter _) => false;
 }
 
 // Memory Match graphic — two flipped cards

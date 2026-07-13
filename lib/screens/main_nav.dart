@@ -4,7 +4,7 @@ import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../services/sound_service.dart';
 import 'home/home_screen.dart';
-import 'videos/videos_screen.dart';
+import 'games/word_builder_screen.dart';
 import 'quizzes/quizzes_screen.dart';
 import 'storybooks/storybooks_screen.dart';
 import 'profile/profile_screen.dart';
@@ -27,7 +27,7 @@ class _MainNavState extends State<MainNav> {
 
   final List<Widget> _screens = const [
     HomeScreen(),
-    VideosScreen(),
+    WordBuilderScreen(),
     QuizzesScreen(),
     StorybooksScreen(),
     ProfileScreen(),
@@ -84,7 +84,7 @@ class _MainNavState extends State<MainNav> {
     final t = context.watch<AppProvider>().t;
     final items = [
       ('🏠', t('Home', 'Utama')),
-      ('🎬', t('Videos', 'Video')),
+      ('🔤', t('Spelling', 'Ejaan')),
       ('🧩', t('Quizzes', 'Kuiz')),
       ('📖', t('Stories', 'Cerita')),
       ('👤', t('Profile', 'Profil')),

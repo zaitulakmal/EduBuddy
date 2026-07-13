@@ -247,15 +247,17 @@ class _WordBuilderScreenState extends State<WordBuilderScreen>
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Row(
         children: [
-          BouncyButton(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                  color: _kOrange.withValues(alpha: 0.15), shape: BoxShape.circle),
-              child: const Icon(Icons.arrow_back_rounded, color: _kOrange, size: 22),
+          // Back button only when opened as a pushed page (not as a nav tab)
+          if (Navigator.of(context).canPop())
+            BouncyButton(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                    color: _kOrange.withValues(alpha: 0.15), shape: BoxShape.circle),
+                child: const Icon(Icons.arrow_back_rounded, color: _kOrange, size: 22),
+              ),
             ),
-          ),
           Expanded(
             child: Text(
               t('Level $_level', 'Tahap $_level'),
@@ -446,22 +448,24 @@ class _WordBuilderScreenState extends State<WordBuilderScreen>
               const SizedBox(height: 22),
               Row(
                 children: [
-                  Expanded(
-                    child: BouncyButton(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                            color: const Color(0xFFFDEEE6),
-                            borderRadius: BorderRadius.circular(16)),
-                        child: Text(t('Exit', 'Keluar'),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w800, color: _kOrange)),
+                  if (Navigator.of(context).canPop()) ...[
+                    Expanded(
+                      child: BouncyButton(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                              color: const Color(0xFFFDEEE6),
+                              borderRadius: BorderRadius.circular(16)),
+                          child: Text(t('Exit', 'Keluar'),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w800, color: _kOrange)),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
+                    const SizedBox(width: 12),
+                  ],
                   Expanded(
                     child: BouncyButton(
                       onTap: _restart,
