@@ -90,7 +90,7 @@ class _CountingScreenState extends State<CountingScreen>
           0.1 + dist * 0.8 * cos(angle) * 0.5 + 0.5,
           0.1 + dist * 0.8 * sin(angle) * 0.5 + 0.5,
         ),
-        size: 36 + _rand.nextDouble() * 16,
+        size: 66 + _rand.nextDouble() * 22,
         type: type,
         color: _itemColors[i % _itemColors.length],
         counted: false,
@@ -335,19 +335,24 @@ class _CountingScreenState extends State<CountingScreen>
                 child: AnimatedBuilder(
                   animation: _bounceController,
                   builder: (_, _) {
-                    final bounce = item.counted ? 0.0 : sin(_bounceController.value * pi + i * 0.8) * 6;
+                    final phase = _bounceController.value * pi + i * 0.8;
+                    final bounce = item.counted ? 0.0 : sin(phase) * 7;
+                    final wobble = item.counted ? 0.0 : sin(phase * 0.7) * 0.06;
                     return Transform.translate(
                       offset: Offset(0, bounce),
-                      child: AnimatedScale(
-                        scale: item.counted ? 0.0 : 1.0,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.elasticIn,
-                        child: AnimatedOpacity(
-                          opacity: item.counted ? 0.0 : 1.0,
-                          duration: const Duration(milliseconds: 250),
-                          child: CustomPaint(
-                            size: Size(item.size, item.size),
-                            painter: _ItemPainter(item.type, item.color, item.counted),
+                      child: Transform.rotate(
+                        angle: wobble,
+                        child: AnimatedScale(
+                          scale: item.counted ? 0.0 : 1.0,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.elasticIn,
+                          child: AnimatedOpacity(
+                            opacity: item.counted ? 0.0 : 1.0,
+                            duration: const Duration(milliseconds: 250),
+                            child: CustomPaint(
+                              size: Size(item.size, item.size),
+                              painter: _ItemPainter(item.type, item.color, item.counted),
+                            ),
                           ),
                         ),
                       ),
@@ -483,127 +488,192 @@ class _ItemPainter extends CustomPainter {
 
   _ItemPainter(this.type, this.color, this.faded);
 
-  static const _pi = 3.141592653589793;
+  static const _cos30 = 0.866025;
+
+  Color _lighten(Color c, double amt) => Color.lerp(c, Colors.white, amt)!;
+  Color _darken(Color c, double amt) => Color.lerp(c, Colors.black, amt)!;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = faded ? color.withValues(alpha: 0.2) : color
-      ..style = PaintingStyle.fill;
-    final stroke = Paint()
-      ..color = (faded ? color.withValues(alpha: 0.1) : color.withValues(alpha: 0.6))
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
     final cx = size.width / 2, cy = size.height / 2;
-    final r = size.shortestSide / 2 - 2;
+    final r = size.shortestSide / 2 - 4;
+    final center = Offset(cx, cy);
 
+    if (faded) {
+      final p = Paint()..color = color.withValues(alpha: 0.2);
+      canvas.drawPath(_shapePath(center, r), p);
+      return;
+    }
+
+    // Sun beams sit behind everything else
+    if (type % 8 == 1) {
+      final beam = Paint()
+        ..color = _darken(color, 0.05)
+        ..strokeWidth = r * 0.14
+        ..strokeCap = StrokeCap.round;
+      for (int i = 0; i < 8; i++) {
+        final a = i * pi / 4 + pi / 8;
+        canvas.drawLine(
+          center + Offset(cos(a), sin(a)) * r * 0.68,
+          center + Offset(cos(a), sin(a)) * r * 0.98,
+          beam,
+        );
+      }
+    }
+
+    final path = _shapePath(center, r);
+
+    // Soft drop shadow
+    canvas.save();
+    canvas.translate(0, r * 0.12);
+    canvas.drawPath(
+        path,
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.18)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5));
+    canvas.restore();
+
+    // Gradient body — light falls from the top-left like a sticker
+    final bounds = Rect.fromCircle(center: center, radius: r * 1.2);
+    canvas.drawPath(
+        path,
+        Paint()
+          ..shader = RadialGradient(
+            center: const Alignment(-0.4, -0.5),
+            radius: 1.3,
+            colors: [_lighten(color, 0.38), color, _darken(color, 0.16)],
+            stops: const [0.0, 0.55, 1.0],
+          ).createShader(bounds));
+
+    // Sticker border
+    canvas.drawPath(
+        path,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = (r * 0.10).clamp(2.5, 4.5)
+          ..strokeJoin = StrokeJoin.round);
+
+    // Glossy highlight
+    canvas.save();
+    canvas.translate(cx - r * 0.32, cy - r * 0.42);
+    canvas.rotate(-0.5);
+    canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: r * 0.5, height: r * 0.26),
+        Paint()..color = Colors.white.withValues(alpha: 0.45));
+    canvas.restore();
+
+    _drawFace(canvas, center, r);
+  }
+
+  /// Cute face: two sparkly eyes + a smile. Offset tuned per shape.
+  void _drawFace(Canvas canvas, Offset center, double r) {
+    final t = type % 8;
+    // Face anchor per shape (hearts sit higher, triangles lower, sun on core)
+    final dy = switch (t) {
+      2 => -r * 0.12, // heart
+      4 => r * 0.22,  // triangle
+      1 => 0.0,       // sun core
+      7 => 0.05 * r,  // cloud
+      _ => 0.0,
+    };
+    final scale = switch (t) {
+      1 => 0.62, // sun face fits its core circle
+      6 => 0.72, // diamond is narrow
+      _ => 1.0,
+    };
+    final fc = Offset(center.dx, center.dy + dy);
+    final er = r * 0.11 * scale; // eye radius
+    final ex = r * 0.30 * scale; // eye x-spread
+    final eyeY = fc.dy - r * 0.06 * scale;
+
+    for (final side in [-1, 1]) {
+      final eye = Offset(fc.dx + side * ex, eyeY);
+      canvas.drawCircle(eye, er * 1.35, Paint()..color = Colors.white);
+      canvas.drawCircle(eye, er, Paint()..color = const Color(0xFF3A3A3A));
+      canvas.drawCircle(eye + Offset(-er * 0.3, -er * 0.35), er * 0.32,
+          Paint()..color = Colors.white);
+    }
+
+    // Smile
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset(fc.dx, eyeY + r * 0.18 * scale), radius: r * 0.20 * scale),
+      0.25 * pi,
+      0.5 * pi,
+      false,
+      Paint()
+        ..color = const Color(0xFF3A3A3A)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = (r * 0.07 * scale).clamp(2.0, 4.0)
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // Rosy cheeks
+    final cheek = Paint()
+      ..color = const Color(0xFFFF8A80).withValues(alpha: 0.45);
+    for (final side in [-1, 1]) {
+      canvas.drawCircle(
+          Offset(fc.dx + side * ex * 1.5, eyeY + r * 0.16 * scale), er * 0.7, cheek);
+    }
+  }
+
+  Path _shapePath(Offset center, double r) {
+    final cx = center.dx, cy = center.dy;
     switch (type % 8) {
       case 0: // star
-        _drawStar(canvas, Offset(cx, cy), r, paint, stroke);
-      case 1: // sun
-        _drawSun(canvas, Offset(cx, cy), r, paint, stroke);
+        final path = Path();
+        const n = 5;
+        final inner = r * 0.5;
+        for (int i = 0; i < n * 2; i++) {
+          final angle = i * pi / n - pi / 2;
+          final rad = i.isEven ? r : inner;
+          final p = center + Offset(cos(angle), sin(angle)) * rad;
+          if (i == 0) {
+            path.moveTo(p.dx, p.dy);
+          } else {
+            path.lineTo(p.dx, p.dy);
+          }
+        }
+        return path..close();
+      case 1: // sun core (beams drawn separately)
+        return Path()..addOval(Rect.fromCircle(center: center, radius: r * 0.58));
       case 2: // heart
-        _drawHeart(canvas, Offset(cx, cy), r, paint);
-        _drawHeart(canvas, Offset(cx, cy), r, stroke);
+        final s = r * 0.8;
+        return Path()
+          ..moveTo(cx, cy + s * 0.85)
+          ..cubicTo(cx - s * 1.2, cy + s * 0.2, cx - s * 1.35, cy - s * 0.75, cx - s * 0.7, cy - s * 0.95)
+          ..cubicTo(cx - s * 0.3, cy - s * 1.05, cx, cy - s * 0.75, cx, cy - s * 0.45)
+          ..cubicTo(cx, cy - s * 0.75, cx + s * 0.3, cy - s * 1.05, cx + s * 0.7, cy - s * 0.95)
+          ..cubicTo(cx + s * 1.35, cy - s * 0.75, cx + s * 1.2, cy + s * 0.2, cx, cy + s * 0.85)
+          ..close();
       case 3: // circle
-        canvas.drawCircle(Offset(cx, cy), r, paint);
-        canvas.drawCircle(Offset(cx, cy), r, stroke);
-      case 4: // triangle
-        final tri = Path()
+        return Path()..addOval(Rect.fromCircle(center: center, radius: r * 0.92));
+      case 4: // triangle (rounded corners via arcs approximation: plain path)
+        return Path()
           ..moveTo(cx, cy - r)
           ..lineTo(cx + r * _cos30, cy + r * 0.5)
           ..lineTo(cx - r * _cos30, cy + r * 0.5)
           ..close();
-        canvas.drawPath(tri, paint);
-        canvas.drawPath(tri, stroke);
       case 5: // square
-        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy), width: r * 1.8, height: r * 1.8), const Radius.circular(6)), paint);
-        canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, cy), width: r * 1.8, height: r * 1.8), const Radius.circular(6)), stroke);
+        return Path()
+          ..addRRect(RRect.fromRectAndRadius(
+              Rect.fromCenter(center: center, width: r * 1.75, height: r * 1.75),
+              Radius.circular(r * 0.35)));
       case 6: // diamond
-        final dia = Path()
+        return Path()
           ..moveTo(cx, cy - r)
-          ..lineTo(cx + r * 0.7, cy)
+          ..lineTo(cx + r * 0.75, cy)
           ..lineTo(cx, cy + r)
-          ..lineTo(cx - r * 0.7, cy)
+          ..lineTo(cx - r * 0.75, cy)
           ..close();
-        canvas.drawPath(dia, paint);
-        canvas.drawPath(dia, stroke);
-      default: // cloud
-        _drawCloud(canvas, Offset(cx, cy), r, paint);
+      default: // cloud (single united path so the border has no inner seams)
+        var cloud = Path()
+          ..addOval(Rect.fromCenter(center: center, width: r * 1.9, height: r * 1.05));
+        cloud = Path.combine(PathOperation.union, cloud,
+            Path()..addOval(Rect.fromCircle(center: Offset(cx - r * 0.45, cy - r * 0.28), radius: r * 0.48)));
+        cloud = Path.combine(PathOperation.union, cloud,
+            Path()..addOval(Rect.fromCircle(center: Offset(cx + r * 0.32, cy - r * 0.34), radius: r * 0.42)));
+        return cloud;
     }
-
-    // shine dot
-    if (!faded) {
-      canvas.drawCircle(Offset(cx - r * 0.25, cy - r * 0.25), r * 0.18,
-          Paint()..color = Colors.white.withValues(alpha: 0.55));
-    }
-  }
-
-  static const _cos30 = 0.866025;
-
-  void _drawStar(Canvas canvas, Offset center, double r, Paint fill, Paint stroke) {
-    final path = Path();
-    const n = 5;
-    final inner = r * 0.42;
-    for (int i = 0; i < n * 2; i++) {
-      final angle = i * _pi / n - _pi / 2;
-      final rad = i.isEven ? r : inner;
-      final x = center.dx + rad * _cosImpl(angle);
-      final y = center.dy + rad * _sinImpl(angle);
-      if (i == 0) { path.moveTo(x, y); } else { path.lineTo(x, y); }
-    }
-    path.close();
-    canvas.drawPath(path, fill);
-    canvas.drawPath(path, stroke);
-  }
-
-  void _drawSun(Canvas canvas, Offset center, double r, Paint fill, Paint stroke) {
-    canvas.drawCircle(center, r * 0.55, fill);
-    canvas.drawCircle(center, r * 0.55, stroke);
-    const beams = 8;
-    final bPaint = Paint()..color = fill.color..strokeWidth = 3..strokeCap = StrokeCap.round;
-    for (int i = 0; i < beams; i++) {
-      final a = i * 2 * _pi / beams;
-      canvas.drawLine(
-        Offset(center.dx + r * 0.65 * _cosImpl(a), center.dy + r * 0.65 * _sinImpl(a)),
-        Offset(center.dx + r * 0.95 * _cosImpl(a), center.dy + r * 0.95 * _sinImpl(a)),
-        bPaint,
-      );
-    }
-  }
-
-  void _drawHeart(Canvas canvas, Offset center, double r, Paint paint) {
-    final s = r * 0.85;
-    final path = Path();
-    path.moveTo(center.dx, center.dy + s * 0.8);
-    path.cubicTo(center.dx - s * 1.2, center.dy + s * 0.2, center.dx - s * 1.4, center.dy - s * 0.8, center.dx - s * 0.7, center.dy - s);
-    path.cubicTo(center.dx - s * 0.3, center.dy - s * 1.1, center.dx, center.dy - s * 0.8, center.dx, center.dy - s * 0.5);
-    path.cubicTo(center.dx, center.dy - s * 0.8, center.dx + s * 0.3, center.dy - s * 1.1, center.dx + s * 0.7, center.dy - s);
-    path.cubicTo(center.dx + s * 1.4, center.dy - s * 0.8, center.dx + s * 1.2, center.dy + s * 0.2, center.dx, center.dy + s * 0.8);
-    path.close();
-    canvas.drawPath(path, paint);
-  }
-
-  void _drawCloud(Canvas canvas, Offset center, double r, Paint paint) {
-    canvas.drawOval(Rect.fromCenter(center: center, width: r * 1.8, height: r), paint);
-    canvas.drawCircle(Offset(center.dx - r * 0.45, center.dy - r * 0.1), r * 0.42, paint);
-    canvas.drawCircle(Offset(center.dx + r * 0.3, center.dy - r * 0.2), r * 0.35, paint);
-  }
-
-  double _cosImpl(double a) {
-    a = a % (2 * _pi);
-    if (a < 0) a += 2 * _pi;
-    if (a < _pi / 2) return _cosTaylor(a);
-    if (a < _pi) return -_cosTaylor(_pi - a);
-    if (a < 3 * _pi / 2) return -_cosTaylor(a - _pi);
-    return _cosTaylor(2 * _pi - a);
-  }
-
-  double _sinImpl(double a) => _cosImpl(a - _pi / 2);
-
-  double _cosTaylor(double x) {
-    final x2 = x * x;
-    return 1 - x2 / 2 + x2 * x2 / 24 - x2 * x2 * x2 / 720;
   }
 
   @override
