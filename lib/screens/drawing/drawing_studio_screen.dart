@@ -31,9 +31,10 @@ class DrawingStudioScreen extends StatefulWidget {
 
 class _DrawingStudioScreenState extends State<DrawingStudioScreen>
     with TickerProviderStateMixin {
-  final List<_DrawStroke> _strokes = [];
-  final List<_Stamp> _stamps = [];
-  final List<_DrawStroke> _undoneStrokes = [];
+  // Strokes and stamps live in ONE list, in the order they were made, so the
+  // eraser only affects marks made before it and undo follows real history.
+  final List<Object> _ops = [];
+  final List<Object> _undoneOps = [];
   List<Offset> _currentPoints = [];
   late ConfettiController _confettiController;
   late AnimationController _toolbarAnim;
@@ -72,26 +73,21 @@ class _DrawingStudioScreenState extends State<DrawingStudioScreen>
   }
 
   void _undo() {
-    if (_strokes.isNotEmpty) {
-      setState(() {
-        _undoneStrokes.add(_strokes.removeLast());
-      });
-    } else if (_stamps.isNotEmpty) {
-      setState(() => _stamps.removeLast());
+    if (_ops.isNotEmpty) {
+      setState(() => _undoneOps.add(_ops.removeLast()));
     }
   }
 
   void _redo() {
-    if (_undoneStrokes.isNotEmpty) {
-      setState(() => _strokes.add(_undoneStrokes.removeLast()));
+    if (_undoneOps.isNotEmpty) {
+      setState(() => _ops.add(_undoneOps.removeLast()));
     }
   }
 
   void _clear() {
     setState(() {
-      _strokes.clear();
-      _stamps.clear();
-      _undoneStrokes.clear();
+      _ops.clear();
+      _undoneOps.clear();
     });
   }
 
@@ -207,14 +203,14 @@ class _DrawingStudioScreenState extends State<DrawingStudioScreen>
         child: GestureDetector(
           onTapUp: (d) {
             if (_tool == _Tool.fill) {
-              setState(() => _stamps.add(_Stamp(d.localPosition, _selectedStamp, _color)));
-              _undoneStrokes.clear();
+              setState(() => _ops.add(_Stamp(d.localPosition, _selectedStamp, _color)));
+              _undoneOps.clear();
             }
           },
           onPanStart: (d) {
             if (_tool != _Tool.fill) {
               setState(() => _currentPoints = [d.localPosition]);
-              _undoneStrokes.clear();
+              _undoneOps.clear();
             }
           },
           onPanUpdate: (d) {
@@ -225,15 +221,14 @@ class _DrawingStudioScreenState extends State<DrawingStudioScreen>
           onPanEnd: (_) {
             if (_tool != _Tool.fill && _currentPoints.isNotEmpty) {
               setState(() {
-                _strokes.add(_DrawStroke(List.from(_currentPoints), _color, _brushSize, _tool));
+                _ops.add(_DrawStroke(List.from(_currentPoints), _color, _brushSize, _tool));
                 _currentPoints = [];
               });
             }
           },
           child: CustomPaint(
             painter: _StudioPainter(
-              strokes: _strokes,
-              stamps: _stamps,
+              ops: _ops,
               currentPoints: _currentPoints,
               currentColor: _color,
               currentWidth: _brushSize,
@@ -420,8 +415,7 @@ class _DrawingStudioScreenState extends State<DrawingStudioScreen>
 // ─── Painters ────────────────────────────────────────────────────────────────
 
 class _StudioPainter extends CustomPainter {
-  final List<_DrawStroke> strokes;
-  final List<_Stamp> stamps;
+  final List<Object> ops; // _DrawStroke and _Stamp in chronological order
   final List<Offset> currentPoints;
   final Color currentColor;
   final double currentWidth;
@@ -429,8 +423,7 @@ class _StudioPainter extends CustomPainter {
   final Color bgColor;
 
   const _StudioPainter({
-    required this.strokes,
-    required this.stamps,
+    required this.ops,
     required this.currentPoints,
     required this.currentColor,
     required this.currentWidth,
@@ -440,15 +433,18 @@ class _StudioPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Everything is drawn inside a layer so the eraser (BlendMode.clear)
+    // punches transparent holes; the canvas Container behind shows bgColor.
     canvas.saveLayer(Rect.fromLTWH(0, 0, size.width, size.height), Paint());
-    // Background
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), Paint()..color = bgColor);
 
-    for (final stamp in stamps) {
-      _drawStampShape(canvas, stamp.position, stamp.shape, stamp.color, 40);
-    }
-    for (final s in strokes) {
-      _drawPath(canvas, s.points, s.color, s.width, s.tool);
+    // Chronological replay: the eraser only affects marks made before it,
+    // and anything added afterwards (e.g. a new stamp) draws on top.
+    for (final op in ops) {
+      if (op is _Stamp) {
+        _drawStampShape(canvas, op.position, op.shape, op.color, 40);
+      } else if (op is _DrawStroke) {
+        _drawPath(canvas, op.points, op.color, op.width, op.tool);
+      }
     }
     if (currentPoints.isNotEmpty) {
       _drawPath(canvas, currentPoints, currentColor, currentWidth, currentTool);
@@ -458,15 +454,18 @@ class _StudioPainter extends CustomPainter {
 
   void _drawPath(Canvas canvas, List<Offset> pts, Color color, double width, _Tool tool) {
     if (pts.isEmpty) return;
+    final erasing = tool == _Tool.eraser;
     final paint = Paint()
-      ..color = tool == _Tool.eraser ? bgColor : color
-      ..strokeWidth = tool == _Tool.eraser ? width * 2.5 : width
+      ..color = erasing ? Colors.black : color
+      ..blendMode = erasing ? BlendMode.clear : BlendMode.srcOver
+      ..strokeWidth = erasing ? width * 2.5 : width
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
       ..style = PaintingStyle.stroke;
 
     if (pts.length == 1) {
-      canvas.drawCircle(pts.first, width / 2, paint..style = PaintingStyle.fill);
+      canvas.drawCircle(pts.first, (erasing ? width * 2.5 : width) / 2,
+          paint..style = PaintingStyle.fill);
       return;
     }
     final path = Path()..moveTo(pts[0].dx, pts[0].dy);
