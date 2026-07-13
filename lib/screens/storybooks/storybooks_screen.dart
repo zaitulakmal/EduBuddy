@@ -49,20 +49,22 @@ class StorybooksScreen extends StatelessWidget {
                 const HeaderBackButton(),
                 const Text('📖', style: TextStyle(fontSize: 32)),
                 const SizedBox(width: 12),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Storybooks',
-                      style: TextStyle(
+                      context.watch<AppProvider>().t('Storybooks', 'Buku Cerita'),
+                      style: const TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                       ),
                     ),
                     Text(
-                      'Dive into amazing stories!',
-                      style: TextStyle(
+                      context
+                          .watch<AppProvider>()
+                          .t('Dive into amazing stories!', 'Selami cerita yang menakjubkan!'),
+                      style: const TextStyle(
                         fontSize: 14,
                         color: Colors.white70,
                         fontWeight: FontWeight.w600,

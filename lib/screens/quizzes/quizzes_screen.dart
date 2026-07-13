@@ -74,16 +74,19 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
                 const HeaderBackButton(),
                 const Text('🧩', style: TextStyle(fontSize: 32)),
                 const SizedBox(width: 12),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Quizzes',
-                        style: TextStyle(
+                    Text(context.watch<AppProvider>().t('Quizzes', 'Kuiz'),
+                        style: const TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.w900,
                             color: Colors.white)),
-                    Text('Test Your Knowledge!',
-                        style: TextStyle(
+                    Text(
+                        context
+                            .watch<AppProvider>()
+                            .t('Test Your Knowledge!', 'Uji Pengetahuan Anda!'),
+                        style: const TextStyle(
                             fontSize: 14,
                             color: Colors.white70,
                             fontWeight: FontWeight.w600)),

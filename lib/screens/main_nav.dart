@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
 import '../theme/app_theme.dart';
 import '../services/sound_service.dart';
 import 'home/home_screen.dart';
@@ -79,12 +81,13 @@ class _MainNavState extends State<MainNav> {
   }
 
   List<BottomNavigationBarItem> _buildItems() {
+    final t = context.watch<AppProvider>().t;
     final items = [
-      ('🏠', 'Home'),
-      ('🎬', 'Videos'),
-      ('🧩', 'Quizzes'),
-      ('📖', 'Stories'),
-      ('👤', 'Profile'),
+      ('🏠', t('Home', 'Utama')),
+      ('🎬', t('Videos', 'Video')),
+      ('🧩', t('Quizzes', 'Kuiz')),
+      ('📖', t('Stories', 'Cerita')),
+      ('👤', t('Profile', 'Profil')),
     ];
 
     return items.asMap().entries.map((entry) {

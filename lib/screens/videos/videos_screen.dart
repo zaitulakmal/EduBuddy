@@ -65,20 +65,20 @@ class _VideosScreenState extends State<VideosScreen> {
                 const HeaderBackButton(),
                 const Text('🎬', style: TextStyle(fontSize: 32)),
                 const SizedBox(width: 12),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Videos',
-                      style: TextStyle(
+                      context.watch<AppProvider>().t('Videos', 'Video'),
+                      style: const TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                       ),
                     ),
                     Text(
-                      'Watch & Learn!',
-                      style: TextStyle(
+                      context.watch<AppProvider>().t('Watch & Learn!', 'Tonton & Belajar!'),
+                      style: const TextStyle(
                         fontSize: 14,
                         color: Colors.white70,
                         fontWeight: FontWeight.w600,

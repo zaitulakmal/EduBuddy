@@ -128,7 +128,7 @@ class ProfileScreen extends StatelessWidget {
                           color: Colors.white, size: 20),
                       const SizedBox(width: 6),
                       Text(
-                        '${provider.totalStars} Stars Collected',
+                        provider.t('${provider.totalStars} Stars Collected', '${provider.totalStars} Bintang Dikumpul'),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
@@ -194,9 +194,9 @@ class ProfileScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Overall Progress',
-                      style: TextStyle(
+                    Text(
+                      provider.t('Overall Progress', 'Kemajuan Keseluruhan'),
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textDark,
@@ -204,7 +204,7 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$done of $total activities done',
+                      provider.t('$done of $total activities done', '$done daripada $total aktiviti selesai'),
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textMuted,
@@ -256,9 +256,9 @@ class ProfileScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '🏅 Badges',
-              style: TextStyle(
+            Text(
+              provider.t('🏅 Badges', '🏅 Lencana'),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
                 color: AppColors.textDark,
@@ -337,9 +337,9 @@ class ProfileScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '📊 My Stats',
-              style: TextStyle(
+            Text(
+              provider.t('📊 My Stats', '📊 Statistik Saya'),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
                 color: AppColors.textDark,
@@ -395,9 +395,9 @@ class ProfileScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Language',
-                      style: TextStyle(
+                    Text(
+                      provider.t('Language', 'Bahasa'),
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textDark,

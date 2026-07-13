@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../db/database_helper.dart';
 import '../models/category_model.dart';
 import '../models/video_model.dart';
@@ -24,6 +25,8 @@ class AppProvider extends ChangeNotifier {
   Future<void> loadAll() async {
     isLoading = true;
     notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    selectedLanguage = prefs.getString('app_language') ?? 'en';
     categories = await _db.getCategories();
     videos = await _db.getVideos();
     quizzes = await _db.getQuizzes();
@@ -89,6 +92,8 @@ class AppProvider extends ChangeNotifier {
   void toggleLanguage() {
     selectedLanguage = selectedLanguage == 'en' ? 'ms' : 'en';
     notifyListeners();
+    SharedPreferences.getInstance()
+        .then((p) => p.setString('app_language', selectedLanguage));
   }
 
   String t(String en, String ms) => selectedLanguage == 'en' ? en : ms;

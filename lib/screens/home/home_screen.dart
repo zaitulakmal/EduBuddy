@@ -14,6 +14,7 @@ import '../drawing/drawing_studio_screen.dart';
 import '../coloring/coloring_screen.dart';
 import '../counting/counting_screen.dart';
 import '../games/memory_match_screen.dart';
+import '../games/word_builder_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -55,15 +56,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             slivers: [
               _buildHeader(context, provider),
               _buildStatsRow(context, provider),
-              _buildSectionTitle(context, 'Quick Start', 'Jump right in!'),
+              _buildSectionTitle(context, provider.t('Quick Start', 'Mula Cepat'),
+                  provider.t('Jump right in!', 'Terus mula!')),
               _buildQuickStartGrid(context, provider),
-              _buildSectionTitle(context, 'Creative Activities', 'Draw, colour & create!'),
-              _buildCreativeActivities(context),
-              _buildSectionTitle(context, 'Writing Practice', 'Trace letters & numbers!'),
-              _buildTracingBanner(context),
-              _buildSectionTitle(context, "Today's Challenge", 'Try something new!'),
+              _buildSectionTitle(
+                  context,
+                  provider.t('Creative Activities', 'Aktiviti Kreatif'),
+                  provider.t('Draw, colour & create!', 'Lukis, warna & cipta!')),
+              _buildCreativeActivities(context, provider),
+              _buildSectionTitle(
+                  context,
+                  provider.t('Writing Practice', 'Latihan Menulis'),
+                  provider.t('Trace letters & numbers!', 'Surih huruf & nombor!')),
+              _buildTracingBanner(context, provider),
+              _buildSectionTitle(context, provider.t("Today's Challenge", 'Cabaran Hari Ini'),
+                  provider.t('Try something new!', 'Cuba sesuatu yang baru!')),
               _buildDailyChallenge(context, provider),
-              _buildSectionTitle(context, 'Recent Activity', 'Keep it up!'),
+              _buildSectionTitle(context, provider.t('Recent Activity', 'Aktiviti Terkini'),
+                  provider.t('Keep it up!', 'Teruskan!')),
               _buildRecentActivity(context, provider),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
@@ -131,9 +141,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                         ),
                       ),
-                      const Text(
-                        'Ready to learn today?',
-                        style: TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w600),
+                      Text(
+                        provider.t('Ready to learn today?', 'Sedia belajar hari ini?'),
+                        style: const TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -162,13 +172,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         child: Row(
           children: [
-            _AnimatedStatCard(value: '${provider.videosWatched}', label: 'Videos', gradient: AppColors.gradients[5]),
+            _AnimatedStatCard(value: '${provider.videosWatched}', label: provider.t('Videos', 'Video'), gradient: AppColors.gradients[5]),
             const SizedBox(width: 10),
-            _AnimatedStatCard(value: '${provider.quizzesCompleted}', label: 'Quizzes', gradient: AppColors.gradients[3]),
+            _AnimatedStatCard(value: '${provider.quizzesCompleted}', label: provider.t('Quizzes', 'Kuiz'), gradient: AppColors.gradients[3]),
             const SizedBox(width: 10),
-            _AnimatedStatCard(value: '${provider.storiesRead}', label: 'Stories', gradient: AppColors.gradients[1]),
+            _AnimatedStatCard(value: '${provider.storiesRead}', label: provider.t('Stories', 'Cerita'), gradient: AppColors.gradients[1]),
             const SizedBox(width: 10),
-            _AnimatedStatCard(value: '${provider.worksheetsDone}', label: 'Sheets', gradient: AppColors.gradients[2]),
+            _AnimatedStatCard(value: '${provider.worksheetsDone}', label: provider.t('Sheets', 'Lembaran'), gradient: AppColors.gradients[2]),
           ],
         ),
       ),
@@ -200,10 +210,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildQuickStartGrid(BuildContext context, AppProvider provider) {
     final items = [
-      _QuickItem('Videos', '${provider.videos.length} available', AppColors.gradients[5], const _EmojiGraphic('▶️'), () => _navigate(context, 1)),
-      _QuickItem('Quizzes', '${provider.quizzes.length} quizzes', AppColors.gradients[3], const _EmojiGraphic('🧠'), () => _navigate(context, 2)),
-      _QuickItem('Stories', '${provider.storybooks.length} books', AppColors.gradients[0], const _EmojiGraphic('📖'), () => _navigate(context, 3)),
-      _QuickItem('Worksheets', '${provider.worksheets.length} sheets', AppColors.gradients[2], const _EmojiGraphic('📄'), () => _navigateToWorksheets(context)),
+      _QuickItem(provider.t('Videos', 'Video'),
+          provider.t('${provider.videos.length} available', '${provider.videos.length} tersedia'),
+          AppColors.gradients[5], const _EmojiGraphic('▶️'), () => _navigate(context, 1)),
+      _QuickItem(provider.t('Quizzes', 'Kuiz'),
+          provider.t('${provider.quizzes.length} quizzes', '${provider.quizzes.length} kuiz'),
+          AppColors.gradients[3], const _EmojiGraphic('🧠'), () => _navigate(context, 2)),
+      _QuickItem(provider.t('Stories', 'Cerita'),
+          provider.t('${provider.storybooks.length} books', '${provider.storybooks.length} buku'),
+          AppColors.gradients[0], const _EmojiGraphic('📖'), () => _navigate(context, 3)),
+      _QuickItem(provider.t('Worksheets', 'Lembaran Kerja'),
+          provider.t('${provider.worksheets.length} sheets', '${provider.worksheets.length} helai'),
+          AppColors.gradients[2], const _EmojiGraphic('📄'), () => _navigateToWorksheets(context)),
     ];
 
     return SliverToBoxAdapter(
@@ -240,35 +258,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // ── Creative activities row ───────────────────────────────────────────────
 
-  Widget _buildCreativeActivities(BuildContext context) {
+  Widget _buildCreativeActivities(BuildContext context, AppProvider provider) {
     final activities = [
       _CreativeItem(
-        title: 'Drawing\nStudio',
-        subtitle: 'Free draw!',
+        title: provider.t('Drawing\nStudio', 'Studio\nLukisan'),
+        subtitle: provider.t('Free draw!', 'Lukis bebas!'),
         gradient: [const Color(0xFF1A1A2E), const Color(0xFF16213E)],
         graphic: _DrawingGraphic(),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DrawingStudioScreen())),
       ),
       _CreativeItem(
-        title: 'Coloring\nBook',
-        subtitle: 'Tap to fill!',
+        title: provider.t('Coloring\nBook', 'Buku\nMewarna'),
+        subtitle: provider.t('Tap to fill!', 'Tap untuk warna!'),
         gradient: [const Color(0xFFFF6B35), const Color(0xFFFF9F43)],
         graphic: _ColoringGraphic(),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ColoringScreen())),
       ),
       _CreativeItem(
-        title: 'Counting\nGame',
-        subtitle: 'Count it!',
+        title: provider.t('Counting\nGame', 'Permainan\nMengira'),
+        subtitle: provider.t('Count it!', 'Kira!'),
         gradient: [const Color(0xFF7BC67E), const Color(0xFF4CAF50)],
         graphic: _CountingGraphic(),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CountingScreen())),
       ),
       _CreativeItem(
-        title: 'Memory\nMatch',
-        subtitle: 'Find pairs!',
+        title: provider.t('Memory\nMatch', 'Padanan\nMemori'),
+        subtitle: provider.t('Find pairs!', 'Cari pasangan!'),
         gradient: [const Color(0xFF7B6EC8), const Color(0xFF5B4DA8)],
         graphic: _MemoryGraphic(),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoryMatchScreen())),
+      ),
+      _CreativeItem(
+        title: provider.t('Word\nBuilder', 'Eja\nPerkataan'),
+        subtitle: provider.t('b _ s = bus!', 'b _ s = bas!'),
+        gradient: [const Color(0xFF4ECDC4), const Color(0xFF2BA79E)],
+        graphic: _WordGraphic(),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WordBuilderScreen())),
       ),
     ];
 
@@ -288,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // ── Tracing banner ────────────────────────────────────────────────────────
 
-  Widget _buildTracingBanner(BuildContext context) {
+  Widget _buildTracingBanner(BuildContext context, AppProvider provider) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -316,15 +341,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Writing Practice',
-                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
-                      SizedBox(height: 4),
-                      Text('Trace A–Z and 0–9 with your finger',
-                          style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                      Text(provider.t('Writing Practice', 'Latihan Menulis'),
+                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 4),
+                      Text(
+                          provider.t('Trace A–Z and 0–9 with your finger',
+                              'Surih A–Z dan 0–9 dengan jari anda'),
+                          style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
@@ -373,16 +400,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Today's Quiz",
-                          style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w700)),
+                      Text(provider.t("Today's Quiz", 'Kuiz Hari Ini'),
+                          style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 2),
                       Text(quiz.title,
                           style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
                       const SizedBox(height: 4),
                       Row(children: [
-                        _badge('5 Questions', Colors.white24),
+                        _badge(provider.t('5 Questions', '5 Soalan'), Colors.white24),
                         const SizedBox(width: 6),
-                        if (quiz.highScore > 0) _badge('Best: ${quiz.highScore}⭐', Colors.white24),
+                        if (quiz.highScore > 0)
+                          _badge(provider.t('Best: ${quiz.highScore}⭐', 'Terbaik: ${quiz.highScore}⭐'), Colors.white24),
                       ]),
                     ],
                   ),
@@ -425,14 +453,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10, offset: const Offset(0, 4))],
             ),
-            child: const Column(
+            child: Column(
               children: [
-                Text('🌟', style: TextStyle(fontSize: 48)),
-                SizedBox(height: 8),
-                Text('No activity yet!', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textDark)),
-                SizedBox(height: 4),
-                Text('Start exploring to track your progress',
-                    style: TextStyle(fontSize: 13, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+                const Text('🌟', style: TextStyle(fontSize: 48)),
+                const SizedBox(height: 8),
+                Text(provider.t('No activity yet!', 'Belum ada aktiviti!'),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textDark)),
+                const SizedBox(height: 4),
+                Text(
+                    provider.t('Start exploring to track your progress',
+                        'Mula meneroka untuk menjejak kemajuan anda'),
+                    style: const TextStyle(fontSize: 13, color: AppColors.textMuted, fontWeight: FontWeight.w600),
                     textAlign: TextAlign.center),
               ],
             ),
@@ -448,10 +479,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             ...watchedVideos.map((v) => _ActivityTile(
                   emoji: v.thumbnailEmoji, title: v.title,
-                  subtitle: 'Video watched', color: AppColors.blue)),
+                  subtitle: provider.t('Video watched', 'Video ditonton'), color: AppColors.blue)),
             ...completedQuizzes.map((q) => _ActivityTile(
                   emoji: q.emoji, title: q.title,
-                  subtitle: 'Best score: ${q.highScore} ⭐', color: AppColors.purple)),
+                  subtitle: provider.t('Best score: ${q.highScore} ⭐', 'Skor terbaik: ${q.highScore} ⭐'),
+                  color: AppColors.purple)),
           ],
         ),
       ),
@@ -794,6 +826,46 @@ class _ColoringIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ColoringIconPainter _) => false;
+}
+
+// Word Builder graphic — letter tiles "b _ s"
+class _WordGraphic extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(painter: _WordIconPainter());
+  }
+}
+
+class _WordIconPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final tileW = w * 0.28, tileH = h * 0.42;
+    final labels = ['B', '_', 'S'];
+    for (int i = 0; i < 3; i++) {
+      final cx = w * (0.2 + i * 0.3);
+      final cy = h * 0.5 + (i == 1 ? h * 0.06 : 0);
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(cx, cy), width: tileW, height: tileH),
+        const Radius.circular(6),
+      );
+      canvas.drawRRect(rect,
+          Paint()..color = Colors.white.withValues(alpha: i == 1 ? 0.55 : 1.0));
+      final tp = TextPainter(
+        text: TextSpan(
+            text: labels[i],
+            style: TextStyle(
+                fontSize: tileH * 0.55,
+                fontWeight: FontWeight.w900,
+                color: const Color(0xFF2BA79E))),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(cx - tp.width / 2, cy - tp.height / 2));
+    }
+  }
+
+  @override
+  bool shouldRepaint(_WordIconPainter _) => false;
 }
 
 // Memory Match graphic — two flipped cards
