@@ -13,6 +13,7 @@ import '../tracing/tracing_screen.dart';
 import '../drawing/drawing_studio_screen.dart';
 import '../coloring/coloring_screen.dart';
 import '../counting/counting_screen.dart';
+import '../games/math_blast_screen.dart';
 import '../games/memory_match_screen.dart';
 import '../games/word_builder_screen.dart';
 
@@ -262,6 +263,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildCreativeActivities(BuildContext context, AppProvider provider) {
     final activities = [
+      _CreativeItem(
+        title: provider.t('Math\nBlast', 'Kira\nCepat'),
+        subtitle: provider.t('3 + 2 = ?', '3 + 2 = ?'),
+        gradient: [const Color(0xFFE85B5B), const Color(0xFFC8425B)],
+        graphic: const _EmojiGraphic('🧮'),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MathBlastScreen())),
+      ),
       _CreativeItem(
         title: provider.t('Drawing\nStudio', 'Studio\nLukisan'),
         subtitle: provider.t('Free draw!', 'Lukis bebas!'),

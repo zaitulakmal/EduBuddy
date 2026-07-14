@@ -36,28 +36,32 @@ class SoundService with WidgetsBindingObserver {
   Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
-    final prefs = await SharedPreferences.getInstance();
-    _musicEnabled = prefs.getBool(_kMusicPref) ?? true;
-    _sfxEnabled = prefs.getBool(_kSfxPref) ?? true;
-    await _music.setReleaseMode(ReleaseMode.loop);
-    await _music.setVolume(_musicVolume);
-    for (final p in _sfxPool) {
-      await p.setReleaseMode(ReleaseMode.stop);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _musicEnabled = prefs.getBool(_kMusicPref) ?? true;
+      _sfxEnabled = prefs.getBool(_kSfxPref) ?? true;
+      await _music.setReleaseMode(ReleaseMode.loop);
+      await _music.setVolume(_musicVolume);
+      for (final p in _sfxPool) {
+        await p.setReleaseMode(ReleaseMode.stop);
+      }
+      // Ambient category: respects the ring/silent switch and mixes politely
+      // with other apps' audio (ambient implies mixWithOthers on iOS).
+      await AudioPlayer.global.setAudioContext(AudioContext(
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.ambient,
+          options: const {},
+        ),
+        android: const AudioContextAndroid(
+          contentType: AndroidContentType.music,
+          usageType: AndroidUsageType.game,
+          audioFocus: AndroidAudioFocus.gainTransientMayDuck,
+        ),
+      ));
+      WidgetsBinding.instance.addObserver(this);
+    } catch (_) {
+      // Audio unavailable (e.g. tests, broken audio stack) — app still works.
     }
-    // Ambient category: respects the ring/silent switch and mixes politely
-    // with other apps' audio (ambient implies mixWithOthers on iOS).
-    await AudioPlayer.global.setAudioContext(AudioContext(
-      iOS: AudioContextIOS(
-        category: AVAudioSessionCategory.ambient,
-        options: const {},
-      ),
-      android: const AudioContextAndroid(
-        contentType: AndroidContentType.music,
-        usageType: AndroidUsageType.game,
-        audioFocus: AndroidAudioFocus.gainTransientMayDuck,
-      ),
-    ));
-    WidgetsBinding.instance.addObserver(this);
   }
 
   // ── Background music ────────────────────────────────────────────────────────
