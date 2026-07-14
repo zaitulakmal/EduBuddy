@@ -14,6 +14,7 @@ import '../drawing/drawing_studio_screen.dart';
 import '../coloring/coloring_screen.dart';
 import '../counting/counting_screen.dart';
 import '../games/memory_match_screen.dart';
+import '../games/word_builder_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -209,9 +210,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildQuickStartGrid(BuildContext context, AppProvider provider) {
     final items = [
-      _QuickItem(provider.t('Videos', 'Video'),
-          provider.t('${provider.videos.length} available', '${provider.videos.length} tersedia'),
-          AppColors.gradients[5], const _EmojiGraphic('▶️'), () => _navigate(context, 1)),
+      _QuickItem(provider.t('Word Builder', 'Eja Perkataan'),
+          provider.t('Spell b _ s = bus!', 'Eja b _ s = bas!'),
+          AppColors.gradients[5], const _EmojiGraphic('🔤'),
+          () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const WordBuilderScreen()))),
       _QuickItem(provider.t('Quizzes', 'Kuiz'),
           provider.t('${provider.quizzes.length} quizzes', '${provider.quizzes.length} kuiz'),
           AppColors.gradients[3], const _EmojiGraphic('🧠'), () => _navigate(context, 2)),
@@ -286,6 +289,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         gradient: [const Color(0xFF7B6EC8), const Color(0xFF5B4DA8)],
         graphic: _MemoryGraphic(),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoryMatchScreen())),
+      ),
+      _CreativeItem(
+        title: provider.t('Fun\nVideos', 'Video\nSeronok'),
+        subtitle: provider.t('Watch & sing!', 'Tonton & nyanyi!'),
+        gradient: [const Color(0xFF1E88E5), const Color(0xFF64B5F6)],
+        graphic: const _EmojiGraphic('🎬'),
+        onTap: () => _navigate(context, 1),
       ),
     ];
 
