@@ -216,15 +216,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           AppColors.gradients[5], const _EmojiGraphic('🔤'),
           () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const WordBuilderScreen()))),
+      _QuickItem(provider.t('Math Blast', 'Kira Cepat'),
+          provider.t('3 + 2 = ?', '3 + 2 = ?'),
+          [const Color(0xFFE85B5B), const Color(0xFFC8425B)],
+          const _EmojiGraphic('🧮'),
+          () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const MathBlastScreen()))),
       _QuickItem(provider.t('Quizzes', 'Kuiz'),
-          provider.t('${provider.quizzes.length} quizzes', '${provider.quizzes.length} kuiz'),
+          provider.t('Test yourself!', 'Uji diri anda!'),
           AppColors.gradients[3], const _EmojiGraphic('🧠'), () => _navigate(context, 2)),
-      _QuickItem(provider.t('Stories', 'Cerita'),
-          provider.t('${provider.storybooks.length} books', '${provider.storybooks.length} buku'),
-          AppColors.gradients[0], const _EmojiGraphic('📖'), () => _navigate(context, 3)),
-      _QuickItem(provider.t('Worksheets', 'Lembaran Kerja'),
-          provider.t('${provider.worksheets.length} sheets', '${provider.worksheets.length} helai'),
-          AppColors.gradients[2], const _EmojiGraphic('📄'), () => _navigateToWorksheets(context)),
+      _QuickItem(provider.t('Memory Match', 'Padanan Memori'),
+          provider.t('30 levels!', '30 tahap!'),
+          [const Color(0xFF4ECDC4), const Color(0xFF2BA79E)],
+          const _EmojiGraphic('🎴'),
+          () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const MemoryMatchScreen()))),
     ];
 
     return SliverToBoxAdapter(
@@ -264,13 +270,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildCreativeActivities(BuildContext context, AppProvider provider) {
     final activities = [
       _CreativeItem(
-        title: provider.t('Math\nBlast', 'Kira\nCepat'),
-        subtitle: provider.t('3 + 2 = ?', '3 + 2 = ?'),
-        gradient: [const Color(0xFFE85B5B), const Color(0xFFC8425B)],
-        graphic: const _EmojiGraphic('🧮'),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MathBlastScreen())),
-      ),
-      _CreativeItem(
         title: provider.t('Drawing\nStudio', 'Studio\nLukisan'),
         subtitle: provider.t('Free draw!', 'Lukis bebas!'),
         gradient: [const Color(0xFF1A1A2E), const Color(0xFF16213E)],
@@ -292,18 +291,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CountingScreen())),
       ),
       _CreativeItem(
-        title: provider.t('Memory\nMatch', 'Padanan\nMemori'),
-        subtitle: provider.t('Find pairs!', 'Cari pasangan!'),
-        gradient: [const Color(0xFF7B6EC8), const Color(0xFF5B4DA8)],
-        graphic: _MemoryGraphic(),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MemoryMatchScreen())),
-      ),
-      _CreativeItem(
         title: provider.t('Fun\nVideos', 'Video\nSeronok'),
         subtitle: provider.t('Watch & sing!', 'Tonton & nyanyi!'),
         gradient: [const Color(0xFF1E88E5), const Color(0xFF64B5F6)],
         graphic: const _EmojiGraphic('🎬'),
         onTap: () => _navigate(context, 1),
+      ),
+      _CreativeItem(
+        title: provider.t('Work\nSheets', 'Lembaran\nKerja'),
+        subtitle: provider.t('Practice!', 'Latihan!'),
+        gradient: [const Color(0xFF66BB6A), const Color(0xFF43A047)],
+        graphic: const _EmojiGraphic('📄'),
+        onTap: () => _navigateToWorksheets(context),
       ),
     ];
 
@@ -836,50 +835,6 @@ class _ColoringIconPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ColoringIconPainter _) => false;
-}
-
-// Memory Match graphic — two flipped cards
-class _MemoryGraphic extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(painter: _MemoryIconPainter());
-  }
-}
-
-class _MemoryIconPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width, h = size.height;
-    final cardW = w * 0.42, cardH = h * 0.62;
-
-    // Back card (left, tilted)
-    canvas.save();
-    canvas.translate(w * 0.36, h * 0.52);
-    canvas.rotate(-0.18);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: cardW, height: cardH), const Radius.circular(8)),
-      Paint()..color = Colors.white.withValues(alpha: 0.55),
-    );
-    canvas.restore();
-
-    // Front card (right, tilted, with star)
-    canvas.save();
-    canvas.translate(w * 0.62, h * 0.48);
-    canvas.rotate(0.14);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(Rect.fromCenter(center: Offset.zero, width: cardW, height: cardH), const Radius.circular(8)),
-      Paint()..color = Colors.white,
-    );
-    final tp = TextPainter(
-      text: TextSpan(text: '★', style: TextStyle(fontSize: cardH * 0.42, color: const Color(0xFF7B6EC8).withValues(alpha: 0.7))),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_MemoryIconPainter _) => false;
 }
 
 // Counting graphic — floating stars
