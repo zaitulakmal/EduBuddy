@@ -44,13 +44,15 @@ void main() {
     await tester.pumpWidget(_wrap());
     await tester.pump(const Duration(milliseconds: 300));
 
-    // A question is shown
+    // A question and four answer options are shown. (No golden compare here:
+    // questions are randomised, so a pixel snapshot would be flaky.)
     expect(find.textContaining('= ?'), findsOneWidget);
-
-    await expectLater(
-      find.byType(MathBlastScreen),
-      matchesGoldenFile('goldens/math_blast.png'),
-    );
+    final options = find.byWidgetPredicate((w) =>
+        w is Container &&
+        w.decoration is BoxDecoration &&
+        (w.decoration as BoxDecoration).gradient != null &&
+        w.constraints?.maxHeight == 64);
+    expect(options, findsNWidgets(4));
   });
 
   testWidgets('answering questions advances and wrong answers cost lives',
