@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'package:flutter/rendering.dart';
 
 /// Source of truth for the EduBuddy launcher icon.
 ///
@@ -9,7 +9,7 @@ import 'dart:ui';
 /// The owl read comes mostly from two things: a pair of overlapping circular
 /// facial discs (one wide oval reads as a cat) and a beak that tapers
 /// downward between them.
-class OwlIconPainter {
+class OwlIconPainter extends CustomPainter {
   const OwlIconPainter({
     this.drawBackground = true,
     this.cropBody = true,
@@ -28,6 +28,7 @@ class OwlIconPainter {
   static const Color gold = Color(0xFFFFC93F);
   static const Color cream = Color(0xFFFFF4DC);
 
+  @override
   void paint(Canvas canvas, Size size) {
     // Authored against a 1024 grid and scaled to whatever size is requested.
     final s = size.width / 1024.0;
@@ -102,4 +103,9 @@ class OwlIconPainter {
       ..close();
     canvas.drawPath(path, paint);
   }
+
+  @override
+  bool shouldRepaint(covariant OwlIconPainter old) =>
+      old.drawBackground != drawBackground || old.cropBody != cropBody;
+
 }

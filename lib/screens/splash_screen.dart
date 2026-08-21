@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../widgets/owl_mark.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import 'main_nav.dart';
@@ -32,9 +34,10 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 600),
     );
 
-    _logoScale = Tween<double>(begin: 0.3, end: 1.0).animate(
-      CurvedAnimation(parent: _logoCtrl, curve: Curves.elasticOut),
-    );
+    _logoScale = Tween<double>(
+      begin: 0.3,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _logoCtrl, curve: Curves.elasticOut));
     _logoFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _logoCtrl, curve: const Interval(0, 0.5)),
     );
@@ -85,11 +88,7 @@ class _SplashScreenState extends State<SplashScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFFF6B35),
-              Color(0xFFFF9F43),
-              Color(0xFFFFD700),
-            ],
+            colors: [Color(0xFFFF6B35), Color(0xFFFF9F43), Color(0xFFFFD700)],
           ),
         ),
         child: SafeArea(
@@ -97,45 +96,25 @@ class _SplashScreenState extends State<SplashScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Floating emoji bubbles background
-                Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Background decoration emojis
-                    Positioned(
-                      top: -60,
-                      left: -40,
-                      child: Opacity(
-                        opacity: 0.3,
-                        child: Text('🌟', style: TextStyle(fontSize: 80)),
-                      ),
-                    ),
-                    // Logo
-                    FadeTransition(
-                      opacity: _logoFade,
-                      child: ScaleTransition(
-                        scale: _logoScale,
-                        child: Container(
-                          width: 140,
-                          height: 140,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.2),
-                                blurRadius: 30,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Text('🎓', style: TextStyle(fontSize: 72)),
-                          ),
+                // Logo
+                FadeTransition(
+                  opacity: _logoFade,
+                  child: ScaleTransition(
+                    scale: _logoScale,
+                    // Same owl the launcher and the system splash draw,
+                    // so the handoff reads as one screen rather than two
+                    // splashes with two different logos.
+                    child: const SizedBox(
+                      width: 168,
+                      height: 168,
+                      child: CustomPaint(
+                        painter: OwlIconPainter(
+                          drawBackground: false,
+                          cropBody: false,
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
 
                 const SizedBox(height: 32),
@@ -165,7 +144,9 @@ class _SplashScreenState extends State<SplashScreen>
                         const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 8),
+                            horizontal: 20,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(20),

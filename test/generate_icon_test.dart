@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
 
-import '../tool/icon/owl_icon_painter.dart';
+import 'package:edubuddy/widgets/owl_mark.dart';
 
 /// Renders the launcher icon to PNG.
 ///
