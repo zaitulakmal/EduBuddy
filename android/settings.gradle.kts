@@ -21,6 +21,9 @@ plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     id("com.android.application") version "8.11.1" apply false
     id("org.jetbrains.kotlin.android") version "2.2.20" apply false
+    // Uploads the release bundle to Play. Only applied when the service
+    // account credentials exist — see app/build.gradle.kts.
+    id("com.github.triplet.play") version "3.12.1" apply false
 }
 
 include(":app")

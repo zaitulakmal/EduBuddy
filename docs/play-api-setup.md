@@ -13,6 +13,13 @@ Play Console → **Settings** (gear, top right) → **Developer account** → **
 Accept the terms, then either create a new Google Cloud project or link an
 existing one. One project per developer account is fine.
 
+### Reusing an existing service account
+
+If another of your apps already publishes through a service account, you do not
+need a new key — reuse it and skip to step 4. Play permissions are granted
+**per app**, so an account authorised for one app has no rights over EduBuddy
+until you add it there explicitly.
+
 ## 2. Create the service account
 
 Still on the **API access** page, under *Service accounts*, click
@@ -61,16 +68,38 @@ The API uploads builds to an app that already has a production release. Your
 **first** production release must be created manually in the Console, and it also
 has to clear Google's review. Use the API for releases after that.
 
-## Verifying it works
+## Publishing
 
-With fastlane installed:
+Uploads go through [Gradle Play Publisher][gpp], wired into the Android build.
+No Ruby or fastlane — macOS ships Ruby 2.6 and fastlane needs 2.7+.
+
+Build the bundle, then publish:
 
 ```sh
+flutter build appbundle --release
 cd android
-fastlane run validate_play_store_json_key json_key:play-service-account.json
+./gradlew publishReleaseBundle                     # internal track
+./gradlew publishReleaseBundle -Ptrack=production  # production
 ```
 
-Prints the account and confirms the key authenticates.
+Two deliberate safety defaults in `app/build.gradle.kts`:
+
+- **track defaults to `internal`**, so a bare `publishReleaseBundle` cannot
+  reach real users by accident. Production requires `-Ptrack=production`.
+- **`releaseStatus` is `DRAFT`**, so uploads appear in Console for review and do
+  not roll out until you press the button.
+
+Remember to bump `version:` in `pubspec.yaml` first — Play rejects a versionCode
+that has already been uploaded.
+
+If `android/play-service-account.json` is missing, the build still works
+normally; only the publish tasks fail, and they tell you why.
+
+`./gradlew` needs a JDK on `PATH`. Flutter finds its own when you run
+`flutter build`, but a bare gradlew call does not — set `JAVA_HOME`, or run
+through Android Studio's terminal.
+
+[gpp]: https://github.com/Triple-T/gradle-play-publisher
 
 ## Rotating / revoking
 
