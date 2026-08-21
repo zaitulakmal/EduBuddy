@@ -50,7 +50,7 @@ void main() {
       1024,
       background: false,
       cropBody: false,
-      contentScale: 0.78,
+      contentScale: 0.88,
     );
 
     await _render('assets/icon/preview_96.png', 96);
