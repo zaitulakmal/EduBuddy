@@ -108,7 +108,7 @@ class _TracingScreenState extends State<TracingScreen>
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.gradients[gradientIndex][0]
-                              .withOpacity(0.4),
+                              .withValues(alpha: 0.4),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),

@@ -610,10 +610,6 @@ void _drawBrightStar(Canvas c, Size s, Offset pos, double r, double t) {
   c.drawCircle(pos, r * 1.2, glowP);
 }
 
-void _drawSimpleStar(Canvas c, Size s, Offset pos, double r, double t) {
-  _draw5PointStar(c, pos, r, const Color(0xFFFFF9C4).withValues(alpha: 0.5 + t * 0.5));
-}
-
 void _drawSparkle(Canvas c, Size s, Offset pos, double r) {
   final p = Paint()..color = Colors.white.withValues(alpha: 0.9)..strokeWidth = 1.5..style = PaintingStyle.stroke;
   for (var i = 0; i < 4; i++) {

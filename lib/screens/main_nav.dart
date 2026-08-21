@@ -45,7 +45,7 @@ class _MainNavState extends State<MainNav> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 20,
               offset: const Offset(0, -4),
             ),
@@ -100,7 +100,7 @@ class _MainNavState extends State<MainNav> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary.withOpacity(0.12) : null,
+            color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : null,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Text(

@@ -24,7 +24,7 @@ class ProfileScreen extends StatelessWidget {
               _buildStats(context, provider),
               _buildLanguageToggle(context, provider),
               const SliverToBoxAdapter(child: _SoundSettingsCard()),
-              _buildPrivacyLink(context),
+              _buildPrivacyLink(context, provider),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
@@ -64,7 +64,7 @@ class ProfileScreen extends StatelessWidget {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
+                              color: Colors.black.withValues(alpha: 0.2),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -118,7 +118,7 @@ class ProfileScreen extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.25),
+                    color: Colors.white.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -165,7 +165,7 @@ class ProfileScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.07),
+                color: Colors.black.withValues(alpha: 0.07),
                 blurRadius: 14,
                 offset: const Offset(0, 4),
               ),
@@ -212,11 +212,11 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _progressItem('🎬', 'Videos', provider.videosWatched,
+                    _progressItem('🎬', provider.t('Videos', 'Video'), provider.videosWatched,
                         provider.videos.length, AppColors.blue),
-                    _progressItem('🧩', 'Quizzes', provider.quizzesCompleted,
+                    _progressItem('🧩', provider.t('Quizzes', 'Kuiz'), provider.quizzesCompleted,
                         provider.quizzes.length, AppColors.purple),
-                    _progressItem('📖', 'Stories', provider.storiesRead,
+                    _progressItem('📖', provider.t('Stories', 'Cerita'), provider.storiesRead,
                         provider.storybooks.length, AppColors.teal),
                   ],
                 ),
@@ -278,7 +278,7 @@ class ProfileScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: badge.isEarned
-                          ? AppColors.secondary.withOpacity(0.15)
+                          ? AppColors.secondary.withValues(alpha: 0.15)
                           : Colors.white,
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
@@ -289,7 +289,7 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 8,
                           offset: const Offset(0, 3),
                         ),
@@ -356,11 +356,11 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 _StatTile('🌟', '${provider.totalStars}', 'Total Stars',
                     AppColors.secondary),
-                _StatTile('🎬', '${provider.videosWatched}', 'Videos Watched',
+                _StatTile('🎬', '${provider.videosWatched}', provider.t('Videos Watched', 'Video Ditonton'),
                     AppColors.blue),
                 _StatTile('🧩', '${provider.quizzesCompleted}',
-                    'Quizzes Done', AppColors.purple),
-                _StatTile('📖', '${provider.storiesRead}', 'Stories Read',
+                    provider.t('Quizzes Done', 'Kuiz Selesai'), AppColors.purple),
+                _StatTile('📖', '${provider.storiesRead}', provider.t('Stories Read', 'Cerita Dibaca'),
                     AppColors.teal),
               ],
             ),
@@ -381,7 +381,7 @@ class ProfileScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.06),
+                color: Colors.black.withValues(alpha: 0.06),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -426,16 +426,16 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPrivacyLink(BuildContext context) {
+  Widget _buildPrivacyLink(BuildContext context, AppProvider provider) {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
         child: TextButton(
           onPressed: () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen())),
-          child: const Text(
-            'Privacy Policy',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+          child: Text(
+            provider.t('Privacy Policy', 'Dasar Privasi'),
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
         ),
       ),
@@ -455,9 +455,9 @@ class ProfileScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Pick Your Avatar!',
-              style: TextStyle(
+            Text(
+              provider.t('Pick Your Avatar!', 'Pilih Avatar Anda!'),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
                 color: AppColors.textDark,
@@ -478,7 +478,7 @@ class ProfileScreen extends StatelessWidget {
                         child: Container(
                           decoration: BoxDecoration(
                             color: provider.userAvatar == a
-                                ? AppColors.primary.withOpacity(0.1)
+                                ? AppColors.primary.withValues(alpha: 0.1)
                                 : Colors.grey.shade50,
                             borderRadius: BorderRadius.circular(16),
                             border: provider.userAvatar == a
@@ -507,14 +507,14 @@ class ProfileScreen extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text(
-          '✏️ Change Your Name',
-          style: TextStyle(fontWeight: FontWeight.w900),
+        title: Text(
+          provider.t('✏️ Change Your Name', '✏️ Tukar Nama Anda'),
+          style: const TextStyle(fontWeight: FontWeight.w900),
         ),
         content: TextField(
           controller: ctrl,
           decoration: InputDecoration(
-            hintText: 'Enter your name...',
+            hintText: provider.t('Enter your name...', 'Masukkan nama anda...'),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
             ),
@@ -529,7 +529,7 @@ class ProfileScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(provider.t('Cancel', 'Batal')),
           ),
           ElevatedButton(
             onPressed: () {
@@ -538,11 +538,11 @@ class ProfileScreen extends StatelessWidget {
               }
               Navigator.pop(context);
             },
-            child: const Text('Save'),
+            child: Text(provider.t('Save', 'Simpan')),
           ),
         ],
       ),
-    );
+    ).then((_) => ctrl.dispose());
   }
 }
 
@@ -559,9 +559,9 @@ class _StatTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -581,7 +581,7 @@ class _StatTile extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: color.withOpacity(0.8),
+              color: color.withValues(alpha: 0.8),
             ),
             textAlign: TextAlign.center,
           ),
@@ -648,6 +648,7 @@ class _SoundSettingsCardState extends State<_SoundSettingsCard> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AppProvider>();
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
       child: Container(
@@ -667,23 +668,25 @@ class _SoundSettingsCardState extends State<_SoundSettingsCard> {
           children: [
             _row(
               emoji: '🎵',
-              title: 'Music',
-              subtitle: _sound.musicEnabled ? 'On' : 'Off',
+              title: provider.t('Music', 'Muzik'),
+              subtitle: _sound.musicEnabled ? provider.t('On', 'Hidup') : provider.t('Off', 'Mati'),
               value: _sound.musicEnabled,
               onChanged: (v) async {
                 await _sound.setMusicEnabled(v);
+                if (!mounted) return;
                 setState(() {});
               },
             ),
             const Divider(height: 24),
             _row(
               emoji: '🔔',
-              title: 'Sound Effects',
-              subtitle: _sound.sfxEnabled ? 'On' : 'Off',
+              title: provider.t('Sound Effects', 'Kesan Bunyi'),
+              subtitle: _sound.sfxEnabled ? provider.t('On', 'Hidup') : provider.t('Off', 'Mati'),
               value: _sound.sfxEnabled,
               onChanged: (v) async {
                 await _sound.setSfxEnabled(v);
                 if (v) _sound.correct();
+                if (!mounted) return;
                 setState(() {});
               },
             ),

@@ -193,7 +193,7 @@ class _AllChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(30),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -201,7 +201,7 @@ class _AllChip extends StatelessWidget {
           border: isSelected
               ? null
               : Border.all(
-                  color: AppColors.blue.withOpacity(0.4), width: 1.5),
+                  color: AppColors.blue.withValues(alpha: 0.4), width: 1.5),
         ),
         child: Text(
           '🌟 All',
@@ -237,7 +237,7 @@ class _VideoCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -306,7 +306,7 @@ class _VideoCard extends StatelessWidget {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(Icons.play_arrow_rounded,

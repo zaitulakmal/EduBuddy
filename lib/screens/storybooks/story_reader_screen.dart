@@ -35,6 +35,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   Future<void> _loadPages() async {
     final pages =
         await widget.provider.loadStorybookPages(widget.book.id!);
+    if (!mounted) return;
     setState(() => _pages = pages);
   }
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
-import '../theme/app_theme.dart';
 import 'main_nav.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -50,8 +49,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _startAnimation() async {
     await Future.delayed(const Duration(milliseconds: 200));
+    if (!mounted) return;
     _logoCtrl.forward();
     await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
     _textCtrl.forward();
 
     await context.read<AppProvider>().loadAll();
@@ -122,7 +123,7 @@ class _SplashScreenState extends State<SplashScreen>
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
+                                color: Colors.black.withValues(alpha: 0.2),
                                 blurRadius: 30,
                                 offset: const Offset(0, 10),
                               ),
@@ -166,7 +167,7 @@ class _SplashScreenState extends State<SplashScreen>
                           padding: const EdgeInsets.symmetric(
                               horizontal: 20, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.25),
+                            color: Colors.white.withValues(alpha: 0.25),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Text(

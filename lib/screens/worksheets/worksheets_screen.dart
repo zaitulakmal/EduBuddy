@@ -133,7 +133,7 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
+                        color: Colors.black.withValues(alpha: 0.06),
                         blurRadius: 6,
                         offset: const Offset(0, 3),
                       ),
@@ -167,10 +167,10 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF00897B).withOpacity(0.08),
+            color: const Color(0xFF00897B).withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-                color: const Color(0xFF00897B).withOpacity(0.3)),
+                color: const Color(0xFF00897B).withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
@@ -259,13 +259,13 @@ class _WorksheetCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
         border: worksheet.isCompleted
-            ? Border.all(color: AppColors.success.withOpacity(0.5))
+            ? Border.all(color: AppColors.success.withValues(alpha: 0.5))
             : null,
       ),
       child: Row(
@@ -275,8 +275,8 @@ class _WorksheetCard extends StatelessWidget {
             height: 52,
             decoration: BoxDecoration(
               color: worksheet.isCompleted
-                  ? AppColors.success.withOpacity(0.12)
-                  : const Color(0xFF00897B).withOpacity(0.1),
+                  ? AppColors.success.withValues(alpha: 0.12)
+                  : const Color(0xFF00897B).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Center(
@@ -349,7 +349,7 @@ class _WorksheetCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
