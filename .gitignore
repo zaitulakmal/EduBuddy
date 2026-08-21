@@ -48,3 +48,9 @@ app.*.map.json
 android/key.properties
 android/app/*.jks
 android/app/*.keystore
+
+# Google Play Developer API service account credentials — NEVER commit
+android/play-service-account.json
+**/play-service-account*.json
+**/*service-account*.json
+google-play-api-key.json
