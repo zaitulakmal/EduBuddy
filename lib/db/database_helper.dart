@@ -1,7 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/category_model.dart';
-import '../models/video_model.dart';
 import '../models/quiz_model.dart';
 import '../models/storybook_model.dart';
 import '../models/worksheet_model.dart';
@@ -200,26 +199,6 @@ class DatabaseHelper {
       categoryIds.add(id);
     }
 
-    // Insert videos
-    final videoData = [
-      {'title': 'Farm Animals Song', 'title_ms': 'Lagu Haiwan Ladang', 'description': 'Learn about farm animals through a fun song!', 'category_id': categoryIds[0], 'age_group': 'preschool', 'duration': '3:45', 'thumbnail_emoji': '🐄', 'video_url': 'https://www.youtube.com/watch?v=example1', 'is_downloaded': 0, 'is_watched': 0},
-      {'title': 'Wild Animals Adventure', 'title_ms': 'Pengembaraan Haiwan Liar', 'description': 'Discover amazing wild animals from around the world!', 'category_id': categoryIds[0], 'age_group': 'primary', 'duration': '5:20', 'thumbnail_emoji': '🦊', 'video_url': 'https://www.youtube.com/watch?v=example2', 'is_downloaded': 0, 'is_watched': 0},
-      {'title': 'Count to 20 with Robots', 'title_ms': 'Kira hingga 20 dengan Robot', 'description': 'Count from 1 to 20 with our friendly robot friends!', 'category_id': categoryIds[1], 'age_group': 'preschool', 'duration': '4:10', 'thumbnail_emoji': '🤖', 'video_url': 'https://www.youtube.com/watch?v=example3', 'is_downloaded': 0, 'is_watched': 0},
-      {'title': 'Rainbow Colors Magic', 'title_ms': 'Sihir Warna Pelangi', 'description': 'Explore all the colors of the rainbow!', 'category_id': categoryIds[2], 'age_group': 'preschool', 'duration': '3:30', 'thumbnail_emoji': '🌈', 'video_url': 'https://www.youtube.com/watch?v=example4', 'is_downloaded': 0, 'is_watched': 0},
-      {'title': 'Solar System Adventure', 'title_ms': 'Pengembaraan Sistem Solar', 'description': 'Travel through our amazing solar system!', 'category_id': categoryIds[3], 'age_group': 'primary', 'duration': '6:15', 'thumbnail_emoji': '🚀', 'video_url': 'https://www.youtube.com/watch?v=example5', 'is_downloaded': 0, 'is_watched': 0},
-      {'title': 'ABC Song Fun', 'title_ms': 'Lagu ABC yang Seronok', 'description': 'Learn the alphabet with a catchy song!', 'category_id': categoryIds[4], 'age_group': 'preschool', 'duration': '2:50', 'thumbnail_emoji': '🔤', 'video_url': 'https://www.youtube.com/watch?v=example6', 'is_downloaded': 0, 'is_watched': 0},
-      {'title': 'Origami for Kids', 'title_ms': 'Origami untuk Kanak-kanak', 'description': 'Make fun origami shapes step by step!', 'category_id': categoryIds[5], 'age_group': 'all', 'duration': '7:00', 'thumbnail_emoji': '🦢', 'video_url': 'https://www.youtube.com/watch?v=example7', 'is_downloaded': 0, 'is_watched': 0},
-      {'title': 'Addition is Easy!', 'title_ms': 'Tambah itu Mudah!', 'description': 'Learn addition with fun examples and tricks!', 'category_id': categoryIds[6], 'age_group': 'primary', 'duration': '4:45', 'thumbnail_emoji': '🍎', 'video_url': 'https://www.youtube.com/watch?v=example8', 'is_downloaded': 0, 'is_watched': 0},
-      {'title': 'Do Re Mi Song', 'title_ms': 'Lagu Do Re Mi', 'description': 'Learn music notes with this classic song!', 'category_id': categoryIds[7], 'age_group': 'all', 'duration': '3:20', 'thumbnail_emoji': '🎶', 'video_url': 'https://www.youtube.com/watch?v=example9', 'is_downloaded': 0, 'is_watched': 0},
-      {'title': 'Ocean Animals', 'title_ms': 'Haiwan Lautan', 'description': 'Dive deep and meet amazing sea creatures!', 'category_id': categoryIds[0], 'age_group': 'all', 'duration': '5:00', 'thumbnail_emoji': '🐠', 'video_url': 'https://www.youtube.com/watch?v=example10', 'is_downloaded': 0, 'is_watched': 0},
-      {'title': 'Shapes All Around', 'title_ms': 'Bentuk di Sekeliling Kita', 'description': 'Discover shapes hiding everywhere around us!', 'category_id': categoryIds[1], 'age_group': 'preschool', 'duration': '3:55', 'thumbnail_emoji': '⭐', 'video_url': 'https://www.youtube.com/watch?v=example11', 'is_downloaded': 0, 'is_watched': 0},
-      {'title': 'Plant Life Cycle', 'title_ms': 'Kitaran Hidup Tumbuhan', 'description': 'Watch how a tiny seed grows into a big plant!', 'category_id': categoryIds[3], 'age_group': 'primary', 'duration': '5:30', 'thumbnail_emoji': '🌱', 'video_url': 'https://www.youtube.com/watch?v=example12', 'is_downloaded': 0, 'is_watched': 0},
-    ];
-
-    for (final v in videoData) {
-      await db.insert('videos', v);
-    }
-
     // Insert quizzes
     final quiz1Id = await db.insert('quizzes', {
       'title': 'Animal Kingdom Quiz',
@@ -388,7 +367,6 @@ class DatabaseHelper {
     // Insert badges
     final badgeData = [
       {'name': 'First Star', 'name_ms': 'Bintang Pertama', 'description': 'Complete your first quiz!', 'emoji': '⭐', 'requirement': 'quizzes', 'required_count': 1, 'is_earned': 0},
-      {'name': 'Video Fan', 'name_ms': 'Peminat Video', 'description': 'Watch 5 videos!', 'emoji': '📺', 'requirement': 'videos', 'required_count': 5, 'is_earned': 0},
       {'name': 'Bookworm', 'name_ms': 'Kutu Buku', 'description': 'Read 3 storybooks!', 'emoji': '📚', 'requirement': 'stories', 'required_count': 3, 'is_earned': 0},
       {'name': 'Quiz Champion', 'name_ms': 'Juara Kuiz', 'description': 'Get 100% in any quiz!', 'emoji': '🏆', 'requirement': 'perfect', 'required_count': 1, 'is_earned': 0},
       {'name': 'Super Learner', 'name_ms': 'Pelajar Super', 'description': 'Complete 10 worksheets!', 'emoji': '🎓', 'requirement': 'worksheets', 'required_count': 10, 'is_earned': 0},
@@ -419,21 +397,6 @@ class DatabaseHelper {
     final db = await database;
     final result = await db.query('categories');
     return result.map((m) => CategoryModel.fromMap(m)).toList();
-  }
-
-  // ==================== VIDEOS ====================
-  Future<List<VideoModel>> getVideos({int? categoryId}) async {
-    final db = await database;
-    final result = categoryId != null
-        ? await db.query('videos', where: 'category_id = ?', whereArgs: [categoryId])
-        : await db.query('videos');
-    return result.map((m) => VideoModel.fromMap(m)).toList();
-  }
-
-  Future<void> markVideoWatched(int id) async {
-    final db = await database;
-    await db.update('videos', {'is_watched': 1}, where: 'id = ?', whereArgs: [id]);
-    await db.rawUpdate('UPDATE user_profile SET videos_watched = videos_watched + 1 WHERE id = 1');
   }
 
   // ==================== QUIZZES ====================

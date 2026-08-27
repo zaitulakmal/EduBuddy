@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../../theme/app_theme.dart';
 import '../../services/sound_service.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../widgets/page_theme.dart';
 
 class _FloatItem {
   Offset position;
@@ -226,6 +228,7 @@ class _CountingScreenState extends State<CountingScreen>
             ),
             onPressed: () => Navigator.pop(context),
           ),
+          BuddyMascot(size: 42, variant: PagePalette.counting.buddy, animation: PagePalette.counting.anim),
           Expanded(
             child: Center(
               child: Text('Level $_level', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: grad[0])),
@@ -248,7 +251,7 @@ class _CountingScreenState extends State<CountingScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('⭐', style: TextStyle(fontSize: 14)),
+                const Icon(Icons.star_rounded, color: Colors.white, size: 16),
                 const SizedBox(width: 4),
                 Text('$_score', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)),
               ],
@@ -405,7 +408,7 @@ class _CountingScreenState extends State<CountingScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('🎉', style: TextStyle(fontSize: 52)),
+                const Icon(Icons.celebration_rounded, color: Colors.white, size: 52),
                 const SizedBox(height: 6),
                 const Text('Correct!', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)),
                 Text('+${_targetCount * 10 * (_level - 1)} points!',
@@ -433,7 +436,7 @@ class _CountingScreenState extends State<CountingScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('💫', style: TextStyle(fontSize: 56)),
+                const Icon(Icons.auto_awesome_rounded, color: AppColors.primary, size: 56),
                 const SizedBox(height: 12),
                 const Text('Game Over!', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.textDark)),
                 const SizedBox(height: 6),

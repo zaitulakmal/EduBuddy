@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../widgets/page_theme.dart';
 import 'tracing_canvas_screen.dart';
 
 class TracingScreen extends StatefulWidget {
@@ -38,20 +40,34 @@ class _TracingScreenState extends State<TracingScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('✏️ Writing Practice'),
+        backgroundColor: PagePalette.tracing.accent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BuddyMascot(size: 38, variant: PagePalette.tracing.buddy, animation: PagePalette.tracing.anim),
+            const SizedBox(width: 8),
+            // Same guard as the other mascot titles: a longer string or a
+            // narrower phone would otherwise overflow the app bar.
+            const Flexible(
+              child: Text('Writing Practice', overflow: TextOverflow.ellipsis),
+            ),
+          ],
+        ),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: AppColors.primary,
+          indicatorColor: Colors.white,
           indicatorWeight: 3,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textMuted,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
           labelStyle: const TextStyle(
             fontWeight: FontWeight.w800,
             fontSize: 14,
           ),
           tabs: const [
-            Tab(text: '🔤 Letters A-Z'),
-            Tab(text: '🔢 Numbers 0-9'),
+            Tab(text: 'Letters A-Z'),
+            Tab(text: 'Numbers 0-9'),
           ],
         ),
       ),

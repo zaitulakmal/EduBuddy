@@ -4,6 +4,10 @@ import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/buddy_avatar_card.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../widgets/motion.dart';
+import '../../widgets/page_theme.dart';
 import '../../services/sound_service.dart';
 import '../privacy_policy_screen.dart';
 
@@ -34,124 +38,138 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context, AppProvider provider) {
-    final avatars = ['🦁', '🐯', '🦊', '🐼', '🦄', '🐸', '🐧', '🦋', '🐬', '🦅'];
 
     return SliverToBoxAdapter(
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFFF6B35), Color(0xFFFF9F43)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-            child: Column(
-              children: [
-                BouncyButton(
-                  onTap: () => _showAvatarPicker(context, provider, avatars),
-                  child: Stack(
-                    children: [
-                      Container(
-                        width: 100,
-                        height: 100,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.2),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            provider.userAvatar,
-                            style: const TextStyle(fontSize: 56),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.edit_rounded,
-                              color: AppColors.primary, size: 16),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: () => _editName(context, provider),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        provider.userName,
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.edit_rounded,
-                          color: Colors.white70, size: 18),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.star_rounded,
-                          color: Colors.white, size: 20),
-                      const SizedBox(width: 6),
-                      Text(
-                        provider.t('${provider.totalStars} Stars Collected', '${provider.totalStars} Bintang Dikumpul'),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+      child: Stack(
+        children: [
+          Positioned(
+            top: -30,
+            right: -24,
+            child: GradientBlob(
+              colors: [PagePalette.profile.accentSoft, Colors.white],
+              size: 150,
+              opacity: 0.25,
             ),
           ),
-        ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: PagePalette.profile.gradient,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(36)),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                child: Column(
+                  children: [
+                    BouncyButton(
+                      onTap: () => _showAvatarPicker(context, provider),
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              // The Buddy the user picked, not the page's own
+                              // one, so the avatar picker actually shows up.
+                              child: BuddyMascot(
+                                size: 76,
+                                variant:
+                                    buddyVariantFromId(provider.userAvatar),
+                                animation: PagePalette.profile.anim,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.edit_rounded,
+                                  color: AppColors.primary, size: 16),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () => _editName(context, provider),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            provider.userName,
+                            style: const TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.edit_rounded,
+                              color: Colors.white70, size: 18),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star_rounded,
+                              color: Colors.white, size: 20),
+                          const SizedBox(width: 6),
+                          Text(
+                            provider.t('${provider.totalStars} Stars Collected',
+                                '${provider.totalStars} Bintang Dikumpul'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildStarProgress(BuildContext context, AppProvider provider) {
-    final total = provider.videos.length +
-        provider.quizzes.length +
+    final total = provider.quizzes.length +
         provider.storybooks.length;
-    final done = provider.videosWatched +
-        provider.quizzesCompleted +
+    final done = provider.quizzesCompleted +
         provider.storiesRead;
     final percent = total == 0 ? 0.0 : (done / total).clamp(0.0, 1.0);
 
@@ -212,11 +230,9 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _progressItem('🎬', provider.t('Videos', 'Video'), provider.videosWatched,
-                        provider.videos.length, AppColors.blue),
-                    _progressItem('🧩', provider.t('Quizzes', 'Kuiz'), provider.quizzesCompleted,
+                    _progressItem(Icons.psychology_rounded, provider.t('Quizzes', 'Kuiz'), provider.quizzesCompleted,
                         provider.quizzes.length, AppColors.purple),
-                    _progressItem('📖', provider.t('Stories', 'Cerita'), provider.storiesRead,
+                    _progressItem(Icons.menu_book_rounded, provider.t('Stories', 'Cerita'), provider.storiesRead,
                         provider.storybooks.length, AppColors.teal),
                   ],
                 ),
@@ -229,12 +245,12 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _progressItem(
-      String emoji, String label, int done, int total, Color color) {
+      IconData icon, String label, int done, int total, Color color) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 14)),
+          Icon(icon, color: color, size: 16),
           const SizedBox(width: 6),
           Text(
             '$label: $done/$total',
@@ -257,7 +273,7 @@ class ProfileScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              provider.t('🏅 Badges', '🏅 Lencana'),
+              provider.t('Badges', 'Lencana'),
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
@@ -298,18 +314,23 @@ class ProfileScreen extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(
-                          badge.isEarned ? badge.emoji : '🔒',
-                          style: TextStyle(
-                            fontSize: 30,
-                            color: badge.isEarned ? null : Colors.grey,
+                        SizedBox(
+                          height: 38,
+                          child: Center(
+                            child: badge.isEarned
+                                ? Text(
+                                    badge.emoji,
+                                    style: const TextStyle(fontSize: 30),
+                                  )
+                                : const Icon(Icons.lock_rounded,
+                                    color: Colors.grey, size: 30),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           badge.name,
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 9,
                             fontWeight: FontWeight.w800,
                             color: badge.isEarned
                                 ? AppColors.textDark
@@ -317,6 +338,7 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           textAlign: TextAlign.center,
                           maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -338,7 +360,7 @@ class ProfileScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              provider.t('📊 My Stats', '📊 Statistik Saya'),
+              provider.t('My Stats', 'Statistik Saya'),
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
@@ -354,13 +376,11 @@ class ProfileScreen extends StatelessWidget {
               mainAxisSpacing: 12,
               childAspectRatio: 1.4,
               children: [
-                _StatTile('🌟', '${provider.totalStars}', 'Total Stars',
+                _StatTile(Icons.star_rounded, '${provider.totalStars}', 'Total Stars',
                     AppColors.secondary),
-                _StatTile('🎬', '${provider.videosWatched}', provider.t('Videos Watched', 'Video Ditonton'),
-                    AppColors.blue),
-                _StatTile('🧩', '${provider.quizzesCompleted}',
+                _StatTile(Icons.psychology_rounded, '${provider.quizzesCompleted}',
                     provider.t('Quizzes Done', 'Kuiz Selesai'), AppColors.purple),
-                _StatTile('📖', '${provider.storiesRead}', provider.t('Stories Read', 'Cerita Dibaca'),
+                _StatTile(Icons.menu_book_rounded, '${provider.storiesRead}', provider.t('Stories Read', 'Cerita Dibaca'),
                     AppColors.teal),
               ],
             ),
@@ -389,7 +409,7 @@ class ProfileScreen extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Text('🌍', style: TextStyle(fontSize: 28)),
+              const Icon(Icons.language_rounded, color: AppColors.primary, size: 28),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -442,59 +462,63 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  void _showAvatarPicker(
-      BuildContext context, AppProvider provider, List<String> avatars) {
+  void _showAvatarPicker(BuildContext context, AppProvider provider) {
+    final selected = buddyVariantFromId(provider.userAvatar);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(24),
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              provider.t('Pick Your Avatar!', 'Pilih Avatar Anda!'),
+              provider.t('Select an avatar', 'Pilih avatar anda'),
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
                 color: AppColors.textDark,
               ),
             ),
+            const SizedBox(height: 6),
+            Text(
+              provider.t(
+                'You can change this later',
+                'Anda boleh tukar kemudian',
+              ),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textDark.withValues(alpha: 0.55),
+              ),
+            ),
             const SizedBox(height: 20),
             GridView.count(
-              crossAxisCount: 5,
+              crossAxisCount: 3,
               shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              children: avatars
-                  .map((a) => BouncyButton(
+              childAspectRatio: 3 / 4,
+              children: kBuddyAvatarChoices
+                  .map((choice) => BuddyAvatarCard(
+                        choice: choice,
+                        selected: choice.variant == selected,
                         onTap: () {
-                          provider.updateProfile(provider.userName, a);
-                          Navigator.pop(context);
+                          SoundService.instance.tap();
+                          provider.updateProfile(
+                            provider.userName,
+                            buddyVariantId(choice.variant),
+                          );
+                          Navigator.pop(sheetContext);
                         },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: provider.userAvatar == a
-                                ? AppColors.primary.withValues(alpha: 0.1)
-                                : Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(16),
-                            border: provider.userAvatar == a
-                                ? Border.all(
-                                    color: AppColors.primary, width: 2)
-                                : null,
-                          ),
-                          child: Center(
-                            child:
-                                Text(a, style: const TextStyle(fontSize: 32)),
-                          ),
-                        ),
                       ))
                   .toList(),
             ),
-            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -508,7 +532,7 @@ class ProfileScreen extends StatelessWidget {
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
-          provider.t('✏️ Change Your Name', '✏️ Tukar Nama Anda'),
+          provider.t('Change Your Name', 'Tukar Nama Anda'),
           style: const TextStyle(fontWeight: FontWeight.w900),
         ),
         content: TextField(
@@ -547,12 +571,12 @@ class ProfileScreen extends StatelessWidget {
 }
 
 class _StatTile extends StatelessWidget {
-  final String emoji;
+  final IconData icon;
   final String value;
   final String label;
   final Color color;
 
-  const _StatTile(this.emoji, this.value, this.label, this.color);
+  const _StatTile(this.icon, this.value, this.label, this.color);
 
   @override
   Widget build(BuildContext context) {
@@ -566,7 +590,7 @@ class _StatTile extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 28)),
+          Icon(icon, color: color, size: 28),
           const SizedBox(height: 4),
           Text(
             value,
@@ -604,7 +628,7 @@ class _SoundSettingsCardState extends State<_SoundSettingsCard> {
   final _sound = SoundService.instance;
 
   Widget _row({
-    required String emoji,
+    required IconData icon,
     required String title,
     required String subtitle,
     required bool value,
@@ -612,7 +636,7 @@ class _SoundSettingsCardState extends State<_SoundSettingsCard> {
   }) {
     return Row(
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 28)),
+        Icon(icon, color: AppColors.primary, size: 28),
         const SizedBox(width: 14),
         Expanded(
           child: Column(
@@ -667,7 +691,7 @@ class _SoundSettingsCardState extends State<_SoundSettingsCard> {
         child: Column(
           children: [
             _row(
-              emoji: '🎵',
+              icon: Icons.music_note_rounded,
               title: provider.t('Music', 'Muzik'),
               subtitle: _sound.musicEnabled ? provider.t('On', 'Hidup') : provider.t('Off', 'Mati'),
               value: _sound.musicEnabled,
@@ -679,7 +703,7 @@ class _SoundSettingsCardState extends State<_SoundSettingsCard> {
             ),
             const Divider(height: 24),
             _row(
-              emoji: '🔔',
+              icon: Icons.notifications_rounded,
               title: provider.t('Sound Effects', 'Kesan Bunyi'),
               subtitle: _sound.sfxEnabled ? provider.t('On', 'Hidup') : provider.t('Off', 'Mati'),
               value: _sound.sfxEnabled,

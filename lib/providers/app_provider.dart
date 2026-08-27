@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../db/database_helper.dart';
+import '../services/sound_service.dart';
 import '../models/category_model.dart';
-import '../models/video_model.dart';
 import '../models/quiz_model.dart';
 import '../models/storybook_model.dart';
 import '../models/worksheet_model.dart';
@@ -12,7 +12,6 @@ class AppProvider extends ChangeNotifier {
   final DatabaseHelper _db = DatabaseHelper();
 
   List<CategoryModel> categories = [];
-  List<VideoModel> videos = [];
   List<QuizModel> quizzes = [];
   List<StorybookModel> storybooks = [];
   List<WorksheetModel> worksheets = [];
@@ -27,8 +26,8 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     selectedLanguage = prefs.getString('app_language') ?? 'en';
+    SoundService.setLanguageResolver(() => selectedLanguage);
     categories = await _db.getCategories();
-    videos = await _db.getVideos();
     quizzes = await _db.getQuizzes();
     storybooks = await _db.getStorybooks();
     worksheets = await _db.getWorksheets();
@@ -44,16 +43,6 @@ class AppProvider extends ChangeNotifier {
 
   Future<List<StorybookPage>> loadStorybookPages(int storybookId) async {
     return _db.getStorybookPages(storybookId);
-  }
-
-  Future<void> markVideoWatched(int id) async {
-    await _db.markVideoWatched(id);
-    final idx = videos.indexWhere((v) => v.id == id);
-    if (idx != -1) {
-      videos[idx].isWatched = true;
-    }
-    userProfile = await _db.getUserProfile();
-    notifyListeners();
   }
 
   Future<void> saveQuizScore(int quizId, int score) async {
@@ -91,6 +80,7 @@ class AppProvider extends ChangeNotifier {
 
   void toggleLanguage() {
     selectedLanguage = selectedLanguage == 'en' ? 'ms' : 'en';
+    SoundService.setLanguageResolver(() => selectedLanguage);
     notifyListeners();
     SharedPreferences.getInstance()
         .then((p) => p.setString('app_language', selectedLanguage));
@@ -99,7 +89,6 @@ class AppProvider extends ChangeNotifier {
   String t(String en, String ms) => selectedLanguage == 'en' ? en : ms;
 
   int get totalStars => (userProfile?['total_stars'] as int?) ?? 0;
-  int get videosWatched => (userProfile?['videos_watched'] as int?) ?? 0;
   int get quizzesCompleted => (userProfile?['quizzes_completed'] as int?) ?? 0;
   int get storiesRead => (userProfile?['stories_read'] as int?) ?? 0;
   int get worksheetsDone => (userProfile?['worksheets_done'] as int?) ?? 0;

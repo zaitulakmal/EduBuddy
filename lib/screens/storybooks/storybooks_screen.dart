@@ -5,7 +5,7 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/storybook_model.dart';
 import '../../widgets/bouncy_button.dart';
-import '../../widgets/header_back_button.dart';
+import '../../widgets/page_theme.dart';
 import 'story_reader_screen.dart';
 
 class StorybooksScreen extends StatelessWidget {
@@ -30,52 +30,13 @@ class StorybooksScreen extends StatelessWidget {
   }
 
   Widget _buildAppBar(BuildContext context) {
+    final provider = context.watch<AppProvider>();
     return SliverToBoxAdapter(
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFFF6B6B), Color(0xFFFF8E8E)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-            child: Row(
-              children: [
-                const HeaderBackButton(),
-                const Text('📖', style: TextStyle(fontSize: 32)),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.watch<AppProvider>().t('Storybooks', 'Buku Cerita'),
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      context
-                          .watch<AppProvider>()
-                          .t('Dive into amazing stories!', 'Selami cerita yang menakjubkan!'),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+      child: FunkyHeader(
+        palette: PagePalette.storybooks,
+        title: provider.t('Storybooks', 'Buku Cerita'),
+        subtitle: provider.t('Dive into amazing stories!', 'Selami cerita yang menakjubkan!'),
+        onBack: () => Navigator.of(context).pop(),
       ),
     );
   }
@@ -173,8 +134,8 @@ class _BookCard extends StatelessWidget {
               child: Stack(
                 children: [
                   Center(
-                    child: Text(book.coverEmoji,
-                        style: const TextStyle(fontSize: 70)),
+                    child: Icon(Icons.auto_stories_rounded,
+                        color: Colors.white, size: 64),
                   ),
                   if (book.isRead)
                     Positioned(
@@ -187,13 +148,20 @@ class _BookCard extends StatelessWidget {
                           color: AppColors.success,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Text(
-                          '✓ Read',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_rounded, color: Colors.white, size: 12),
+                            SizedBox(width: 2),
+                            Text(
+                              'Read',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -234,8 +202,11 @@ class _BookCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
+                      Icon(Icons.description_rounded,
+                          size: 13, color: AppColors.textMuted),
+                      const SizedBox(width: 4),
                       Text(
-                        '📄 ${book.pageCount} pages',
+                        '${book.pageCount} pages',
                         style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textMuted,

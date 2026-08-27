@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../widgets/page_theme.dart';
 import '../../services/sound_service.dart';
 
 // Each coloring page is a list of regions. Regions start WHITE (real coloring
@@ -51,7 +53,7 @@ class _ColoringScreenState extends State<ColoringScreen>
   // ── Pages ──────────────────────────────────────────────────────────────────
 
   List<_ColoringPage> get _pages => [
-    _ColoringPage('Sunshine', '☀️', AppColors.gradients[6], _sunRegions,
+    _ColoringPage('Sunshine', '☀️', AppColors.gradients[0], _sunRegions,
         detailBuilder: _sunDetails),
     _ColoringPage('Happy Cat', '🐱', AppColors.gradients[4], _catRegions,
         detailBuilder: _catDetails),
@@ -61,7 +63,7 @@ class _ColoringScreenState extends State<ColoringScreen>
         detailBuilder: _rainbowDetails),
     _ColoringPage('Cute Fish', '🐟', AppColors.gradients[1], _fishRegions,
         detailBuilder: _fishDetails),
-    _ColoringPage('Butterfly', '🦋', AppColors.gradients[0], _butterflyRegions,
+    _ColoringPage('Butterfly', '🦋', AppColors.gradients[5], _butterflyRegions,
         detailBuilder: _butterflyDetails),
   ];
 
@@ -753,14 +755,25 @@ class _ColoringScreenState extends State<ColoringScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: page.gradient[0],
+        backgroundColor: PagePalette.coloring.accent,
+        foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          '${page.emoji} ${page.title}',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BuddyMascot(size: 36, variant: PagePalette.coloring.buddy, animation: PagePalette.coloring.anim),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                page.title,
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(

@@ -6,12 +6,15 @@ import '../../providers/app_provider.dart';
 import '../../widgets/bouncy_button.dart';
 import '../../widgets/animal_illustrations.dart';
 import '../../widgets/subject_illustrations.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../widgets/illustrations.dart';
+import '../../widgets/page_theme.dart';
 import '../../services/sound_service.dart';
+import '../../theme/app_theme.dart';
 
 // ── Reference-matched palette ─────────────────────────────────────────────────
 const _kBgOrange    = Color(0xFFE8784A);
 const _kHeaderGreen = Color(0xFF7B8C3A);
-const _kProgressBar = Color(0xFF8B78C8);
 const _kCream       = Color(0xFFF5E8C0);
 const _kCreamDark   = Color(0xFFE8D4A0);
 const _kBlobYellow  = Color(0xFFF5C842);
@@ -42,6 +45,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
   int _streak = 0;
   int _maxStreak = 0;
   bool _timedOut = false;
+  bool _dragMode = false;
 
   late AnimationController _cardCtrl;
   late Animation<double> _cardScale;
@@ -100,6 +104,14 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
     setState(() => _questions = qs);
     _cardCtrl.forward();
     _timerCtrl.forward(from: 0);
+    _speakQuestion();
+  }
+
+  // Reads the current question aloud (in the active UI language).
+  void _speakQuestion() {
+    if (_currentIndex >= _questions.length) return;
+    final q = _questions[_currentIndex];
+    SoundService.instance.speak(q.question, q.questionMs);
   }
 
   void _onTimerDone(AnimationStatus status) {
@@ -109,12 +121,14 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
       SoundService.instance.wrong();
       _shakeCtrl.forward(from: 0);
       _monsterBounce.forward(from: 0);
+      SoundService.instance.speakBilingual("Time's up!", 'Masa tamat!');
       Future.delayed(const Duration(milliseconds: 1800), () { if (mounted) _next(); });
     }
   }
 
   @override
   void dispose() {
+    SoundService.instance.stopSpeaking();
     _cardCtrl.dispose(); _shakeCtrl.dispose(); _timerCtrl.dispose();
     _scorePopCtrl.dispose(); _monsterBounce.dispose(); _floatCtrl.dispose();
     _confettiCtrl.dispose();
@@ -138,12 +152,16 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
       }
     });
     _monsterBounce.forward(from: 0);
+    final q = _questions[_currentIndex];
     if (correct) {
       SoundService.instance.correct();
+      SoundService.instance.speakVerdict(true);
       _confettiCtrl.play();
       _scorePopCtrl.forward(from: 0);
     } else {
       SoundService.instance.wrong();
+      SoundService.instance.speakVerdict(false,
+          correctAnswer: q.options[q.correctIndex], ms: q.optionsMs[q.correctIndex]);
       _shakeCtrl.forward(from: 0);
     }
     Future.delayed(const Duration(milliseconds: 1900), () { if (mounted) _next(); });
@@ -160,6 +178,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
       });
       _cardCtrl.forward(from: 0);
       _timerCtrl.forward(from: 0);
+      _speakQuestion();
     } else {
       _timerCtrl.stop();
       widget.provider.saveQuizScore(widget.quiz.id!, _score);
@@ -208,7 +227,9 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
           _buildHeader(),
           _buildProgressBar(),
           Expanded(child: _buildQuestionCard(q)),
-          _buildAnswerGrid(q),
+          _dragMode
+              ? _buildAnswerDrag(q)
+              : _buildAnswerGrid(q),
           const SizedBox(height: 20),
         ],
       ),
@@ -238,6 +259,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
             ),
           ),
           const SizedBox(width: 12),
+          BuddyMascot(size: 40, variant: PagePalette.quizPlay.buddy, animation: PagePalette.quizPlay.anim),
           Expanded(
             child: Text(
               widget.quiz.title,
@@ -249,14 +271,26 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
             ),
           ),
           const SizedBox(width: 12),
-          // Help button — white circle
-          Container(
-            width: 38, height: 38,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.25),
-              shape: BoxShape.circle,
+          // Mode toggle: Tap / Drag (interactive option 2)
+          BouncyButton(
+            onTap: () => setState(() => _dragMode = !_dragMode),
+            child: Container(
+              height: 38,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  Icon(_dragMode ? Icons.touch_app_rounded : Icons.open_with_rounded,
+                      color: Colors.white, size: 18),
+                  const SizedBox(width: 4),
+                  Text(_dragMode ? 'Drag' : 'Tap',
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                ],
+              ),
             ),
-            child: const Icon(Icons.question_mark_rounded, color: Colors.white, size: 20),
           ),
         ],
       ),
@@ -264,27 +298,11 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
   }
 
   Widget _buildProgressBar() {
-    final progress = (_currentIndex + 1) / _questions.length;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 10,
-              backgroundColor: Colors.white.withValues(alpha: 0.35),
-              valueColor: const AlwaysStoppedAnimation(_kProgressBar),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Question ${_currentIndex + 1} of ${_questions.length}',
-            style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w700),
-          ),
-        ],
+      child: FunkyProgressDots(
+        total: _questions.length,
+        current: _currentIndex + 1,
       ),
     );
   }
@@ -340,7 +358,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: _timedOut
                       ? const Text(
-                          '⏰ Time\'s up!',
+                          'Time\'s up!',
                           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _kBgOrange),
                           textAlign: TextAlign.center,
                         )
@@ -362,7 +380,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
                       padding: const EdgeInsets.only(top: 8),
                       child: Transform.scale(
                         scale: _scorePop.value,
-                        child: const Text('⭐ +1', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _kBlobYellow)),
+                        child: const Text('+1', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _kBlobYellow)),
                       ),
                     );
                   },
@@ -378,7 +396,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        '🔥 $_streak in a row!',
+                        '$_streak in a row!',
                         style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: _kBgOrange),
                       ),
                     ),
@@ -448,6 +466,101 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
             )).toList(),
           ),
         )).toList(),
+      ),
+    );
+  }
+
+  Widget _buildAnswerDrag(QuizQuestion q) {
+    final opts = q.options;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          Text(
+            _answered ? '' : 'Drag the right answer into the box!',
+            style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 10),
+          // Drop zone
+          DragTarget<int>(
+            onWillAcceptWithDetails: (_) => !_answered,
+            onAcceptWithDetails: (d) => _selectAnswer(d.data),
+            builder: (context, candidate, rejected) {
+              final active = candidate.isNotEmpty;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                height: 70,
+                decoration: BoxDecoration(
+                  color: active ? AppColors.primary.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: active ? AppColors.primary : Colors.white.withValues(alpha: 0.5),
+                    width: active ? 3 : 2,
+                  ),
+                ),
+                child: Center(
+                  child: _answered
+                      ? _AnswerPill(
+                          text: opts[q.correctIndex],
+                          index: q.correctIndex,
+                          selectedIndex: _selectedAnswer,
+                          correctIndex: q.correctIndex,
+                          answered: true,
+                          onTap: () {},
+                        )
+                      : Text(
+                          active ? 'Drop it!' : 'Drop here',
+                          style: TextStyle(
+                            color: active ? AppColors.primary : Colors.white70,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 14),
+          // Draggable answer tiles (shuffled)
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            alignment: WrapAlignment.center,
+            children: opts.asMap().entries.map((e) {
+              final i = e.key;
+              final placed = _answered;
+              if (placed) return const SizedBox.shrink();
+              return Draggable<int>(
+                data: i,
+                feedback: _dragTile(opts[i], isFeedback: true),
+                childWhenDragging: Opacity(opacity: 0.35, child: _dragTile(opts[i])),
+                child: _dragTile(opts[i]),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dragTile(String text, {bool isFeedback = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        color: isFeedback ? AppColors.primary : _kCream,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.5), width: 2),
+        boxShadow: isFeedback
+            ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 6))]
+            : [],
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w900,
+          color: isFeedback ? AppColors.onPrimary : const Color(0xFF5A4A2A),
+        ),
       ),
     );
   }
@@ -545,17 +658,44 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
               const SizedBox(height: 24),
               // Message
               Text(
-                percent >= 0.8 ? 'Amazing! 🎉' : percent >= 0.5 ? 'Well done! 👍' : 'Keep trying! 💪',
+                percent >= 0.8 ? 'Amazing!' : percent >= 0.5 ? 'Well done!' : 'Keep trying!',
                 style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
               ),
               if (_maxStreak >= 3)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    '🔥 Best streak: $_maxStreak',
+                    'Best streak: $_maxStreak',
                     style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                 ),
+              const SizedBox(height: 10),
+              // Tap to hear the result read aloud again.
+              BouncyButton(
+                onTap: () {
+                  final pct = (_score / total * 100).round();
+                  SoundService.instance.speakBilingual(
+                    'You scored $_score out of $total. That is $pct percent!',
+                    'Anda dapat $_score daripada $total. Iaitu $pct peratus!',
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.volume_up_rounded, color: Colors.white, size: 18),
+                      SizedBox(width: 6),
+                      Text('Read it to me', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                ),
+              ),
               const Spacer(),
               // Buttons
               Padding(
@@ -591,14 +731,14 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
                           _timerCtrl.forward(from: 0);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: const Center(
-                            child: Text('🔄 Try Again', style: TextStyle(color: _kBgOrange, fontSize: 16, fontWeight: FontWeight.w900)),
-                          ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: const Center(
+                          child: Text('Try Again', style: TextStyle(color: _kBgOrange, fontSize: 16, fontWeight: FontWeight.w900)),
+                        ),
                         ),
                       ),
                     ),

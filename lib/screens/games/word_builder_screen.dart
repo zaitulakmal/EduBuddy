@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../../providers/app_provider.dart';
 import '../../services/sound_service.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../widgets/page_theme.dart';
 
 const _kBg = Color(0xFFFFF4E0);
 const _kOrange = Color(0xFFE8784A);
@@ -258,6 +260,7 @@ class _WordBuilderScreenState extends State<WordBuilderScreen>
                 child: const Icon(Icons.arrow_back_rounded, color: _kOrange, size: 22),
               ),
             ),
+          BuddyMascot(size: 42, variant: PagePalette.wordBuilder.buddy, animation: PagePalette.wordBuilder.anim),
           Expanded(
             child: Text(
               t('Level $_level', 'Tahap $_level'),
@@ -279,7 +282,7 @@ class _WordBuilderScreenState extends State<WordBuilderScreen>
               borderRadius: BorderRadius.circular(18),
             ),
             child: Row(children: [
-              const Text('⭐', style: TextStyle(fontSize: 13)),
+              const Icon(Icons.star_rounded, color: Colors.white, size: 16),
               const SizedBox(width: 4),
               Text('$_score',
                   style: const TextStyle(
@@ -434,7 +437,7 @@ class _WordBuilderScreenState extends State<WordBuilderScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('💪', style: TextStyle(fontSize: 56)),
+              const Icon(Icons.sentiment_very_satisfied_rounded, color: _kOrange, size: 56),
               const SizedBox(height: 8),
               Text(t('Good try!', 'Cubaan yang baik!'),
                   style: const TextStyle(

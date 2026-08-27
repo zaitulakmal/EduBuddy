@@ -5,6 +5,7 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/worksheet_model.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/page_theme.dart';
 
 class WorksheetsScreen extends StatefulWidget {
   const WorksheetsScreen({super.key});
@@ -46,61 +47,11 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
 
   Widget _buildAppBar() {
     return SliverToBoxAdapter(
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF00897B), Color(0xFF4DB6AC)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-            child: Row(
-              children: [
-                BouncyButton(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white, size: 20),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text('📝', style: TextStyle(fontSize: 32)),
-                const SizedBox(width: 12),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Worksheets',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Practice & Learn!',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+      child: FunkyHeader(
+        palette: PagePalette.worksheets,
+        title: 'Worksheets',
+        subtitle: 'Practice & Learn!',
+        onBack: () => Navigator.pop(context),
       ),
     );
   }
@@ -127,7 +78,7 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
                   decoration: BoxDecoration(
                     gradient: selected
                         ? const LinearGradient(
-                            colors: [Color(0xFF00897B), Color(0xFF4DB6AC)])
+                            colors: [AppColors.primaryDeep, AppColors.secondary])
                         : null,
                     color: selected ? null : Colors.white,
                     borderRadius: BorderRadius.circular(30),
@@ -145,7 +96,7 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color:
-                          selected ? Colors.white : const Color(0xFF00897B),
+                          selected ? Colors.white : AppColors.primaryDeep,
                     ),
                   ),
                 ),
@@ -167,14 +118,14 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF00897B).withValues(alpha: 0.08),
+            color: AppColors.primaryDeep.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-                color: const Color(0xFF00897B).withValues(alpha: 0.3)),
+                color: AppColors.primaryDeep.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
-              const Text('📊', style: TextStyle(fontSize: 28)),
+              const Icon(Icons.bar_chart_rounded, color: AppColors.primaryDeep, size: 28),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -182,10 +133,10 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
                   children: [
                     Text(
                       '$done of $total worksheets completed',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF00897B),
+                        color: AppColors.primaryDeep,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -196,7 +147,7 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
                         minHeight: 8,
                         backgroundColor: Colors.grey.shade200,
                         valueColor: const AlwaysStoppedAnimation(
-                            Color(0xFF00897B)),
+                            AppColors.primaryDeep),
                       ),
                     ),
                   ],
@@ -276,14 +227,16 @@ class _WorksheetCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: worksheet.isCompleted
                   ? AppColors.success.withValues(alpha: 0.12)
-                  : const Color(0xFF00897B).withValues(alpha: 0.1),
+                  : AppColors.primaryDeep.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Center(
-              child: Text(
-                worksheet.isCompleted ? '✅' : worksheet.emoji,
-                style: const TextStyle(fontSize: 28),
-              ),
+              child: worksheet.isCompleted
+                  ? const Icon(Icons.check_rounded, color: AppColors.success, size: 28)
+                  : Text(
+                      worksheet.emoji,
+                      style: const TextStyle(fontSize: 28),
+                    ),
             ),
           ),
           const SizedBox(width: 14),
@@ -307,7 +260,7 @@ class _WorksheetCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    _tag(worksheet.subject, const Color(0xFF00897B)),
+                    _tag(worksheet.subject, AppColors.primaryDeep),
                     const SizedBox(width: 6),
                     _tag(worksheet.grade, AppColors.blue),
                   ],
@@ -323,17 +276,24 @@ class _WorksheetCard extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF00897B), Color(0xFF4DB6AC)],
+                    colors: [AppColors.primaryDeep, AppColors.secondary],
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'Done ✓',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_rounded, color: Colors.white, size: 14),
+                    SizedBox(width: 4),
+                    Text(
+                      'Done',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             )

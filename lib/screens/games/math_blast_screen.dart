@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../../providers/app_provider.dart';
 import '../../services/sound_service.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../widgets/page_theme.dart';
 
 const _kBg = Color(0xFFFFF4E0);
 const _kRed = Color(0xFFE85B5B);
@@ -256,6 +258,7 @@ class _MathBlastScreenState extends State<MathBlastScreen>
                 child: const Icon(Icons.arrow_back_rounded, color: _kRed, size: 22),
               ),
             ),
+          BuddyMascot(size: 42, variant: PagePalette.mathBlast.buddy, animation: PagePalette.mathBlast.anim),
           Expanded(
             child: Text(
               t('Level $_level', 'Tahap $_level'),
@@ -277,7 +280,7 @@ class _MathBlastScreenState extends State<MathBlastScreen>
               borderRadius: BorderRadius.circular(18),
             ),
             child: Row(children: [
-              const Text('⭐', style: TextStyle(fontSize: 13)),
+              const Icon(Icons.star_rounded, color: Colors.white, size: 15),
               const SizedBox(width: 4),
               Text('$_score',
                   style: const TextStyle(
@@ -307,7 +310,7 @@ class _MathBlastScreenState extends State<MathBlastScreen>
       child: Column(
         children: [
           Text(
-            t('Solve it! 🧮', 'Kira! 🧮'),
+            t('Solve it!', 'Kira!'),
             style: const TextStyle(
                 color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
           ),
@@ -473,7 +476,7 @@ class _MathBlastScreenState extends State<MathBlastScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('💪', style: TextStyle(fontSize: 56)),
+              const Icon(Icons.sentiment_very_satisfied_rounded, color: _kRed, size: 56),
               const SizedBox(height: 8),
               Text(t('Good try!', 'Cubaan yang baik!'),
                   style: const TextStyle(

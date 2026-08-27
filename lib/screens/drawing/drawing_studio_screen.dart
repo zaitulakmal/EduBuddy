@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../widgets/page_theme.dart';
 
 enum _Tool { pen, eraser, fill }
 
@@ -129,14 +131,29 @@ class _DrawingStudioScreenState extends State<DrawingStudioScreen>
 
   AppBar _buildAppBar() {
     return AppBar(
-      backgroundColor: const Color(0xFF16213E),
+      backgroundColor: PagePalette.drawing.accent,
+      foregroundColor: Colors.white,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
         onPressed: () => Navigator.pop(context),
       ),
-      title: const Text(
-        '🎨 Drawing Studio',
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20),
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          BuddyMascot(size: 26, variant: PagePalette.drawing.buddy, animation: PagePalette.drawing.anim),
+          const SizedBox(width: 8),
+          // The mascot plus a 20pt title did not fit beside the three action
+          // buttons and overflowed the app bar. Sized down to 16 so the whole
+          // title fits; Flexible + ellipsis keeps it from ever overflowing
+          // again on a narrower phone.
+          const Flexible(
+            child: Text(
+              'Drawing Studio',
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+            ),
+          ),
+        ],
       ),
       actions: [
         IconButton(
@@ -401,7 +418,7 @@ class _DrawingStudioScreenState extends State<DrawingStudioScreen>
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('🎉', style: TextStyle(fontSize: 20)),
+              Icon(Icons.celebration_rounded, color: Colors.white, size: 20),
               SizedBox(width: 8),
               Text('I\'m Done!', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900)),
             ],

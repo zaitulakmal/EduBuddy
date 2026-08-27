@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../widgets/page_theme.dart';
 import '../../services/sound_service.dart';
 
 // Word associations for letters
@@ -135,18 +137,29 @@ class _TracingCanvasScreenState extends State<TracingCanvasScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: _gradient[0],
+        backgroundColor: PagePalette.tracing.accent,
+        foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          '"${widget.character}" is for $_word',
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: 18,
-          ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BuddyMascot(size: 36, variant: PagePalette.tracing.buddy, animation: PagePalette.tracing.anim),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '"${widget.character}" is for $_word',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
@@ -215,7 +228,7 @@ class _TracingCanvasScreenState extends State<TracingCanvasScreen>
                 child: const Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('🎉', style: TextStyle(fontSize: 56)),
+                    Icon(Icons.celebration_rounded, color: Colors.white, size: 56),
                     SizedBox(height: 8),
                     Text(
                       'Amazing!',
@@ -489,7 +502,7 @@ class _TracingCanvasScreenState extends State<TracingCanvasScreen>
               ),
               child: Center(
                 child: Text(
-                  _strokes.isEmpty ? '✏️  Start drawing!' : '🎉  Done!',
+                  _strokes.isEmpty ? 'Start drawing!' : 'Done!',
                   style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w900,

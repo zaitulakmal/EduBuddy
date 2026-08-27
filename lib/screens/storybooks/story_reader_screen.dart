@@ -5,6 +5,7 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
 import '../../widgets/story_scene.dart';
+import '../../services/sound_service.dart';
 
 class StoryReaderScreen extends StatefulWidget {
   final StorybookModel book;
@@ -37,10 +38,18 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         await widget.provider.loadStorybookPages(widget.book.id!);
     if (!mounted) return;
     setState(() => _pages = pages);
+    _speakCurrentPage();
+  }
+
+  void _speakCurrentPage() {
+    if (_currentPage >= _pages.length) return;
+    final page = _pages[_currentPage];
+    SoundService.instance.speak(page.text, page.textMs);
   }
 
   @override
   void dispose() {
+    SoundService.instance.stopSpeaking();
     _pageCtrl.dispose();
     super.dispose();
   }
@@ -49,6 +58,10 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
     if (_currentPage < _pages.length - 1) {
       _pageCtrl.nextPage(
           duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+      if (mounted) {
+        setState(() => _currentPage++);
+        _speakCurrentPage();
+      }
     } else if (!_finished) {
       setState(() => _finished = true);
       widget.provider.markStorybookRead(widget.book.id!);
@@ -57,8 +70,14 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
   }
 
   void _previousPage() {
-    _pageCtrl.previousPage(
-        duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+    if (_currentPage > 0) {
+      _pageCtrl.previousPage(
+          duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+      if (mounted) {
+        setState(() => _currentPage--);
+        _speakCurrentPage();
+      }
+    }
   }
 
   void _showCompletionDialog() {
@@ -72,7 +91,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('🎉', style: TextStyle(fontSize: 64)),
+              const Icon(Icons.celebration_rounded, color: AppColors.primary, size: 64),
               const SizedBox(height: 12),
               const Text(
                 'Story Complete!',
@@ -84,7 +103,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'You earned 2 ⭐ stars!\nWell done, little reader!',
+                'You earned 2 stars!\nWell done, little reader!',
                 style: TextStyle(
                   fontSize: 16,
                   color: AppColors.textMuted,
@@ -104,13 +123,20 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text(
-                  '🏠 Back to Stories',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.home_rounded, color: Colors.white, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      'Back to Stories',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -168,6 +194,19 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                       color: Colors.white60,
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  BouncyButton(
+                    onTap: _speakCurrentPage,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white12,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(Icons.volume_up_rounded,
+                          color: Colors.white, size: 20),
                     ),
                   ),
                 ],
@@ -253,7 +292,7 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                         child: Center(
                           child: Text(
                             _currentPage == _pages.length - 1
-                                ? '🎉 Finish!'
+                                ? 'Finish!'
                                 : 'Next →',
                             style: const TextStyle(
                               color: Colors.white,
