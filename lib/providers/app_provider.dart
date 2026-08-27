@@ -31,8 +31,11 @@ class AppProvider extends ChangeNotifier {
     quizzes = await _db.getQuizzes();
     storybooks = await _db.getStorybooks();
     worksheets = await _db.getWorksheets();
-    badges = await _db.getBadges();
     userProfile = await _db.getUserProfile();
+    // Award anything already deserved before the first paint, so progress made
+    // before badges worked at all shows up straight away.
+    await _db.refreshBadges();
+    badges = await _db.getBadges();
     isLoading = false;
     notifyListeners();
   }
@@ -49,6 +52,7 @@ class AppProvider extends ChangeNotifier {
     await _db.saveQuizScore(quizId, score);
     await _refreshQuizzes();
     userProfile = await _db.getUserProfile();
+    await _awardBadges();
     notifyListeners();
   }
 
@@ -57,6 +61,7 @@ class AppProvider extends ChangeNotifier {
     final idx = storybooks.indexWhere((s) => s.id == id);
     if (idx != -1) storybooks[idx].isRead = true;
     userProfile = await _db.getUserProfile();
+    await _awardBadges();
     notifyListeners();
   }
 
@@ -65,6 +70,7 @@ class AppProvider extends ChangeNotifier {
     final idx = worksheets.indexWhere((w) => w.id == id);
     if (idx != -1) worksheets[idx].isCompleted = true;
     userProfile = await _db.getUserProfile();
+    await _awardBadges();
     notifyListeners();
   }
 
@@ -76,6 +82,16 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> _refreshQuizzes() async {
     quizzes = await _db.getQuizzes();
+  }
+
+  /// Badges earned by the most recent bit of progress. Read it after an await
+  /// on one of the progress methods to celebrate them; it is replaced each
+  /// time, not accumulated.
+  List<BadgeModel> newlyEarnedBadges = [];
+
+  Future<void> _awardBadges() async {
+    newlyEarnedBadges = await _db.refreshBadges();
+    badges = await _db.getBadges();
   }
 
   void toggleLanguage() {

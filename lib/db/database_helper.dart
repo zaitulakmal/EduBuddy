@@ -18,6 +18,12 @@ class DatabaseHelper {
     return _db!;
   }
 
+  /// Closes the connection so the next `database` call reopens it.
+  Future<void> close() async {
+    await _db?.close();
+    _db = null;
+  }
+
   Future<Database> _initDb() async {
     final path = join(await getDatabasesPath(), 'edubuddy.db');
     return openDatabase(
@@ -473,6 +479,74 @@ class DatabaseHelper {
     final db = await database;
     final result = await db.query('badges');
     return result.map((m) => BadgeModel.fromMap(m)).toList();
+  }
+
+  /// How far along the user is against each badge requirement.
+  ///
+  /// Derived from progress that is already recorded rather than counted as it
+  /// happens, so it is correct for anyone who made progress before badges were
+  /// awarded at all.
+  Future<Map<String, int>> badgeProgress() async {
+    final db = await database;
+
+    Future<int> count(String sql) async =>
+        Sqflite.firstIntValue(await db.rawQuery(sql)) ?? 0;
+
+    final profile = await getUserProfile();
+    return {
+      'quizzes': (profile?['quizzes_completed'] as int?) ?? 0,
+      'stories': (profile?['stories_read'] as int?) ?? 0,
+      'worksheets': (profile?['worksheets_done'] as int?) ?? 0,
+      // A perfect run means every question in that quiz was answered
+      // correctly, so the bar is the quiz's own question count.
+      'perfect': await count('''
+        SELECT COUNT(*) FROM quizzes q
+        WHERE q.high_score > 0
+          AND q.high_score >= (
+            SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id = q.id
+          )
+      '''),
+      'categories':
+          await count('SELECT COUNT(DISTINCT category_id) FROM quizzes '
+              'WHERE is_completed = 1'),
+    };
+  }
+
+  /// Awards every badge whose requirement the user has already met, and
+  /// returns the ones newly earned so the caller can celebrate them.
+  ///
+  /// Safe to call as often as you like: it only ever moves a badge from
+  /// unearned to earned, and never re-awards one.
+  Future<List<BadgeModel>> refreshBadges() async {
+    final db = await database;
+
+    // The Videos section is gone, so its badge can never be earned. Drop it
+    // rather than leave a permanently locked tile on profiles that predate
+    // the removal.
+    await db.delete('badges', where: 'requirement = ?', whereArgs: ['videos']);
+
+    final progress = await badgeProgress();
+    final now = DateTime.now().toIso8601String();
+    final newlyEarned = <BadgeModel>[];
+
+    for (final row in await db.query('badges', where: 'is_earned = 0')) {
+      final badge = BadgeModel.fromMap(row);
+      final have = progress[badge.requirement];
+      // An unrecognised requirement is left alone rather than awarded: a typo
+      // should not hand out a badge nobody worked for.
+      if (have == null || have < badge.requiredCount) continue;
+
+      await db.update(
+        'badges',
+        {'is_earned': 1, 'earned_date': now},
+        where: 'id = ?',
+        whereArgs: [badge.id],
+      );
+      badge.isEarned = true;
+      badge.earnedDate = now;
+      newlyEarned.add(badge);
+    }
+    return newlyEarned;
   }
 
   // ==================== USER PROFILE ====================
