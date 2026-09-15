@@ -5,6 +5,10 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
 import '../../widgets/buddy_avatar_card.dart';
+import '../journey/journey_screen.dart';
+import '../parent/parent_report_screen.dart';
+import '../shop/shop_screen.dart';
+import '../../models/shop_catalog.dart';
 import '../../widgets/buddy_mascot.dart';
 import '../../widgets/motion.dart';
 import '../../widgets/page_theme.dart';
@@ -19,10 +23,12 @@ class ProfileScreen extends StatelessWidget {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: provider.themeSkin.background,
           body: CustomScrollView(
             slivers: [
               _buildHeader(context, provider),
+              _buildStreakCard(context, provider),
+              _buildLinks(context, provider),
               _buildStarProgress(context, provider),
               _buildBadges(context, provider),
               _buildStats(context, provider),
@@ -34,6 +40,119 @@ class ProfileScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  /// The streak, given its own card so the habit is visible next to the
+  /// totals rather than buried in them.
+  Widget _buildStreakCard(BuildContext context, AppProvider provider) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              const Text('🔥', style: TextStyle(fontSize: 34)),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      provider.t('${provider.streakDays} day streak',
+                          'Streak ${provider.streakDays} hari'),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    Text(
+                      provider.t('Best: ${provider.bestStreak} days',
+                          'Terbaik: ${provider.bestStreak} hari'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (provider.streakFreezes > 0)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF4FF),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Column(
+                    children: [
+                      Text('🛡️ ${provider.streakFreezes}',
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w900)),
+                      Text(
+                        provider.t('spare days', 'hari simpanan'),
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Entry points to the shop, the path and the parent report.
+  Widget _buildLinks(BuildContext context, AppProvider provider) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+        child: Row(
+          children: [
+            _LinkTile(
+              emoji: '🛍️',
+              label: provider.t('Star Shop', 'Kedai'),
+              badge: '${provider.spendableStars} ⭐',
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ShopScreen())),
+            ),
+            const SizedBox(width: 10),
+            _LinkTile(
+              emoji: '🗺️',
+              label: provider.t('Journey', 'Perjalanan'),
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const JourneyScreen())),
+            ),
+            const SizedBox(width: 10),
+            _LinkTile(
+              emoji: '👨‍👩‍👧',
+              label: provider.t('Parents', 'Ibu Bapa'),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const ParentReportScreen())),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -265,29 +384,67 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  /// The badge shelf.
+  ///
+  /// Locked badges show how far along they are rather than a bare padlock. An
+  /// almost-full bar is what pulls a child back for one more go; a padlock
+  /// tells them nothing and pulls no-one. Earned badges are sorted to the
+  /// front, and the closest unearned ones come next.
   Widget _buildBadges(BuildContext context, AppProvider provider) {
+    final badges = List.of(provider.badges);
+    double closeness(badge) {
+      final have = provider.badgeProgress[badge.requirement] ?? 0;
+      final need = badge.requiredCount == 0 ? 1 : badge.requiredCount;
+      return (have / need).clamp(0.0, 1.0);
+    }
+
+    badges.sort((x, y) {
+      if (x.isEarned != y.isEarned) return x.isEarned ? -1 : 1;
+      return closeness(y).compareTo(closeness(x));
+    });
+
+    final earned = badges.where((b) => b.isEarned).length;
+
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              provider.t('Badges', 'Lencana'),
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textDark,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  provider.t('Badges', 'Lencana'),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textDark,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$earned/${badges.length}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: 110,
+              height: 132,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                itemCount: provider.badges.length,
+                itemCount: badges.length,
                 itemBuilder: (_, i) {
-                  final badge = provider.badges[i];
+                  final badge = badges[i];
+                  final have = provider.badgeProgress[badge.requirement] ?? 0;
+                  final need = badge.requiredCount;
+                  final fraction = closeness(badge);
                   return Container(
                     width: 88,
                     margin: const EdgeInsets.only(right: 10),
@@ -322,13 +479,21 @@ class ProfileScreen extends StatelessWidget {
                                     badge.emoji,
                                     style: const TextStyle(fontSize: 30),
                                   )
-                                : const Icon(Icons.lock_rounded,
-                                    color: Colors.grey, size: 30),
+                                // A greyed emoji still says which badge this
+                                // is, so a child can want it. A padlock does
+                                // not.
+                                : Opacity(
+                                    opacity: 0.35,
+                                    child: Text(
+                                      badge.emoji,
+                                      style: const TextStyle(fontSize: 30),
+                                    ),
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          badge.name,
+                          provider.t(badge.name, badge.nameMs),
                           style: TextStyle(
                             fontSize: 9,
                             fontWeight: FontWeight.w800,
@@ -340,6 +505,31 @@ class ProfileScreen extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        const SizedBox(height: 6),
+                        if (badge.isEarned)
+                          const Icon(Icons.check_circle_rounded,
+                              size: 14, color: AppColors.secondary)
+                        else ...[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: fraction,
+                              minHeight: 5,
+                              backgroundColor: AppColors.divider,
+                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                  AppColors.primary),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '${have.clamp(0, need)}/$need',
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   );
@@ -463,65 +653,237 @@ class ProfileScreen extends StatelessWidget {
   }
 
   void _showAvatarPicker(BuildContext context, AppProvider provider) {
-    final selected = buddyVariantFromId(provider.userAvatar);
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              provider.t('Select an avatar', 'Pilih avatar anda'),
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textDark,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              provider.t(
-                'You can change this later',
-                'Anda boleh tukar kemudian',
-              ),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textDark.withValues(alpha: 0.55),
-              ),
-            ),
-            const SizedBox(height: 20),
-            GridView.count(
-              crossAxisCount: 3,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 3 / 4,
-              children: kBuddyAvatarChoices
-                  .map((choice) => BuddyAvatarCard(
+      builder: (sheetContext) => StatefulBuilder(
+        // The sheet has to repaint as hats and Buddies are picked; the screen
+        // behind it is not rebuilt while a modal route is up.
+        builder: (sheetContext, setSheetState) {
+          final selected = buddyVariantFromId(provider.userAvatar);
+          final hat = provider.buddyHat;
+          final ownedHats = [
+            BuddyHat.none,
+            ...ShopCatalog.ofKind('hat')
+                .where((i) => provider.owns(i.key))
+                .map((i) => buddyHatFromId(i.value)),
+          ];
+          final accessory = provider.buddyAccessory;
+          final ownedAccessories = [
+            BuddyAccessory.none,
+            ...ShopCatalog.ofKind('accessory')
+                .where((i) => provider.owns(i.key))
+                .map((i) => buddyAccessoryFromId(i.value)),
+          ];
+
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    provider.t('Select an avatar', 'Pilih avatar anda'),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    provider.t(
+                      'You can change this later',
+                      'Anda boleh tukar kemudian',
+                    ),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textDark.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  GridView.count(
+                    crossAxisCount: 3,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 3 / 4,
+                    children: kBuddyAvatarChoices.map((choice) {
+                      final locked = !provider.buddyAvailable(choice.variant);
+                      return BuddyAvatarCard(
                         choice: choice,
                         selected: choice.variant == selected,
+                        locked: locked,
                         onTap: () {
                           SoundService.instance.tap();
+                          if (locked) {
+                            // Send them where they can actually get it, rather
+                            // than leaving a dead padlock.
+                            Navigator.pop(sheetContext);
+                            Navigator.of(context).push(MaterialPageRoute(
+                                builder: (_) => const ShopScreen()));
+                            return;
+                          }
                           provider.updateProfile(
                             provider.userName,
                             buddyVariantId(choice.variant),
                           );
-                          Navigator.pop(sheetContext);
+                          setSheetState(() {});
                         },
-                      ))
-                  .toList(),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 22),
+                  _cosmeticRow<BuddyHat>(
+                    context: context,
+                    sheetContext: sheetContext,
+                    provider: provider,
+                    title: provider.t('Hats', 'Topi'),
+                    options: ownedHats,
+                    none: BuddyHat.none,
+                    current: hat,
+                    preview: (option) => BuddyMascot(
+                      size: 66,
+                      variant: selected,
+                      hat: option,
+                      accessory: accessory,
+                      waving: false,
+                      animation: BuddyAnim.idle,
+                    ),
+                    onPick: (option) {
+                      provider.setHat(option);
+                      setSheetState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 22),
+                  _cosmeticRow<BuddyAccessory>(
+                    context: context,
+                    sheetContext: sheetContext,
+                    provider: provider,
+                    title: provider.t('Accessories', 'Aksesori'),
+                    options: ownedAccessories,
+                    none: BuddyAccessory.none,
+                    current: accessory,
+                    preview: (option) => BuddyMascot(
+                      size: 66,
+                      variant: selected,
+                      hat: hat,
+                      accessory: option,
+                      waving: false,
+                      animation: BuddyAnim.idle,
+                    ),
+                    onPick: (option) {
+                      provider.setAccessory(option);
+                      setSheetState(() {});
+                    },
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          );
+        },
       ),
+    );
+  }
+
+  /// A horizontal strip of owned cosmetics (hats, accessories) with a "None"
+  /// tile first and a door to the shop last.
+  Widget _cosmeticRow<T>({
+    required BuildContext context,
+    required BuildContext sheetContext,
+    required AppProvider provider,
+    required String title,
+    required List<T> options,
+    required T none,
+    required T current,
+    required Widget Function(T option) preview,
+    required void Function(T option) onPick,
+  }) {
+    return Column(
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textDark,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 84,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              for (final option in options)
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: GestureDetector(
+                    onTap: () {
+                      SoundService.instance.tap();
+                      onPick(option);
+                    },
+                    child: Container(
+                      width: 74,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceAlt,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: option == current
+                              ? AppColors.primary
+                              : Colors.transparent,
+                          width: 3,
+                        ),
+                      ),
+                      child: option == none
+                          ? Center(
+                              child: Text(
+                                provider.t('None', 'Tiada'),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            )
+                          : preview(option),
+                    ),
+                  ),
+                ),
+              // A single door to the shop, so an empty row is an invitation
+              // rather than a dead end.
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ShopScreen()));
+                },
+                child: Container(
+                  width: 74,
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySoft,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.add_rounded,
+                        color: AppColors.primaryDeep, size: 28),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -715,6 +1077,69 @@ class _SoundSettingsCardState extends State<_SoundSettingsCard> {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One square shortcut on the profile.
+class _LinkTile extends StatelessWidget {
+  final String emoji;
+  final String label;
+  final String? badge;
+  final VoidCallback onTap;
+
+  const _LinkTile({
+    required this.emoji,
+    required this.label,
+    required this.onTap,
+    this.badge,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: BouncyButton(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 26)),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textDark,
+                ),
+              ),
+              if (badge != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  badge!,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );

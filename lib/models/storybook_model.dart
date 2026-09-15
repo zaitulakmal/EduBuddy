@@ -7,6 +7,10 @@ class StorybookModel {
   final int categoryId;
   final String ageGroup;
   final int pageCount;
+
+  /// Set for books from [kStoryLibrary]; null for the three original books,
+  /// which are illustrated by row id instead.
+  final String? storyKey;
   bool isRead;
   List<StorybookPage> pages;
 
@@ -19,6 +23,7 @@ class StorybookModel {
     required this.categoryId,
     required this.ageGroup,
     required this.pageCount,
+    this.storyKey,
     this.isRead = false,
     this.pages = const [],
   });
@@ -32,6 +37,7 @@ class StorybookModel {
         'category_id': categoryId,
         'age_group': ageGroup,
         'page_count': pageCount,
+        'story_key': storyKey,
         'is_read': isRead ? 1 : 0,
       };
 
@@ -44,6 +50,7 @@ class StorybookModel {
         categoryId: map['category_id'],
         ageGroup: map['age_group'],
         pageCount: map['page_count'],
+        storyKey: map['story_key'] as String?,
         isRead: map['is_read'] == 1,
       );
 }

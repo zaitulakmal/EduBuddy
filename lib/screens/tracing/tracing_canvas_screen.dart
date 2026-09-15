@@ -4,7 +4,10 @@ import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
 import '../../widgets/buddy_mascot.dart';
 import '../../widgets/page_theme.dart';
+import 'package:provider/provider.dart';
+import '../../providers/app_provider.dart';
 import '../../services/sound_service.dart';
+import '../../widgets/reward_overlay.dart';
 
 // Word associations for letters
 const Map<String, String> _letterWords = {
@@ -89,14 +92,40 @@ class _TracingCanvasScreenState extends State<TracingCanvasScreen>
     super.dispose();
   }
 
+  /// Paid once per letter. Clearing and re-tracing the same letter is good
+  /// practice but not a second reward.
+  bool _awarded = false;
+
   void _celebrate() {
     if (_showCelebration) return;
     setState(() => _showCelebration = true);
     SoundService.instance.complete();
     _confettiController.play();
+    _award();
     Future.delayed(const Duration(milliseconds: 3200), () {
       if (mounted) setState(() => _showCelebration = false);
     });
+  }
+
+  /// Pays for a traced letter. Tracing earned nothing before this, so the
+  /// work a child did here fed neither stars nor badges.
+  Future<void> _award() async {
+    if (_awarded) return;
+    _awarded = true;
+    final provider = context.read<AppProvider>();
+    try {
+      await provider.markCreativeDone('tracing');
+    } catch (_) {
+      return;
+    }
+    final badges = List.of(provider.newlyEarnedBadges);
+    if (!mounted || badges.isEmpty) return;
+    // The screen has its own celebration, so only interrupt for a badge.
+    await showRewardSheet(
+      context,
+      title: provider.t('New badge!', 'Lencana baharu!'),
+      badges: badges,
+    );
   }
 
   void _clearCanvas() {

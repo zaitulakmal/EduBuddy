@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import 'package:provider/provider.dart';
+import '../../models/badge_model.dart';
+import '../../models/progression.dart';
 import '../../providers/app_provider.dart';
 import '../../services/sound_service.dart';
+import '../../widgets/reward_overlay.dart';
 import '../../widgets/bouncy_button.dart';
 import '../../widgets/buddy_mascot.dart';
 import '../../widgets/page_theme.dart';
@@ -63,12 +67,23 @@ class _WordBuilderScreenState extends State<WordBuilderScreen>
   late ConfettiController _confetti;
   late AnimationController _shakeCtrl;
 
+  /// Key this game is stored under, so each game resumes independently.
+  static const _gameKey = 'word';
+
   int _level = 1;
   int _score = 0;
   int _lives = 3;
   int _solvedInLevel = 0;
   bool _gameOver = false;
   bool _celebrating = false;
+
+  /// Until the stored level has been read, painting the board would flash
+  /// level 1 at a child who is really much further along.
+  bool _loadingProgress = true;
+
+  /// Captured in [initState]: `context` cannot be read from [dispose], and a
+  /// lazy `late final` would first evaluate there — too late.
+  late final AppProvider _db;
 
   String _emoji = '';
   String _word = '';
@@ -87,11 +102,34 @@ class _WordBuilderScreenState extends State<WordBuilderScreen>
     _confetti = ConfettiController(duration: const Duration(seconds: 2));
     _shakeCtrl =
         AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
+    _db = context.read<AppProvider>();
+    _restoreProgress();
+  }
+
+  /// Picks up where the child left off. Before this existed the level reset to
+  /// 1 on every launch, so closing the app threw away every level earned.
+  Future<void> _restoreProgress() async {
+    var resume = 1;
+    try {
+      final stats = await _db.gameStats(_gameKey);
+      resume = stats.resumeLevel.clamp(1, 99);
+    } catch (_) {
+      // Storage unavailable — starting at level 1 beats refusing to open.
+    }
+    if (!mounted) return;
+    setState(() {
+      _level = resume;
+      _loadingProgress = false;
+    });
     _newWord();
   }
 
   @override
   void dispose() {
+    // Most runs end by walking away, not by finishing a level, so the
+    // checkpoint is written on the way out too.
+    _db.saveGameCheckpoint(_gameKey, level: _level, score: _score).catchError(
+        (_) {});
     _confetti.dispose();
     _shakeCtrl.dispose();
     super.dispose();
@@ -172,15 +210,7 @@ class _WordBuilderScreenState extends State<WordBuilderScreen>
         SoundService.instance.win();
         _confetti.play();
         setState(() => _celebrating = true);
-        Future.delayed(const Duration(milliseconds: 1800), () {
-          if (!mounted) return;
-          setState(() {
-            _level++;
-            _solvedInLevel = 0;
-            _celebrating = false;
-          });
-          _newWord();
-        });
+        _completeLevel();
       } else {
         SoundService.instance.correct();
         Future.delayed(const Duration(milliseconds: 650), () {
@@ -198,9 +228,66 @@ class _WordBuilderScreenState extends State<WordBuilderScreen>
     }
   }
 
+  /// Banks a cleared level: records it, pays the stars it earned, and shows the
+  /// celebration when there is something new to celebrate.
+  Future<void> _completeLevel() async {
+    final provider = context.read<AppProvider>();
+    final cleared = _level;
+
+    // Lives run across the whole session, so reaching a level end with all
+    // three means an unbroken run — what the perfect bonus pays for.
+    GameReward? reward;
+    var newBadges = <BadgeModel>[];
+    try {
+      reward = await provider.recordGameLevel(
+        gameKey: _gameKey,
+        level: cleared,
+        rating: _lives,
+        perfect: _lives >= 3,
+        score: _score,
+      );
+      newBadges = List.of(provider.newlyEarnedBadges);
+    } catch (_) {
+      // Never let a storage failure strand a child on the celebration screen.
+    }
+
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+
+    setState(() {
+      _level = cleared + 1;
+      _solvedInLevel = 0;
+      _celebrating = false;
+    });
+    _newWord();
+    unawaited(provider
+        .saveGameCheckpoint(_gameKey, level: _level, score: _score)
+        .catchError((_) {}));
+
+    if (!mounted) return;
+    // Replaying a level already beaten pays nothing, and a modal with nothing
+    // in it is just an interruption — so only celebrate a real reward.
+    if ((reward?.paid ?? false) || newBadges.isNotEmpty) {
+      final t = provider.t;
+      await showRewardSheet(
+        context,
+        title: t('Level $cleared complete!', 'Tahap $cleared selesai!'),
+        subtitle: (reward?.perfectStars ?? 0) > 0
+            ? t('No lives lost — perfect!', 'Tiada nyawa hilang — sempurna!')
+            : null,
+        stars: reward?.total ?? 0,
+        badges: newBadges,
+        buddy: buddyVariantFromId(provider.userAvatar),
+        hat: provider.buddyHat,
+        accessory: provider.buddyAccessory,
+      );
+    }
+  }
+
   void _restart() {
     setState(() {
-      _level = 1;
+      // Retry the level they were on rather than sending them back to the
+      // start — levels already cleared stay cleared.
       _score = 0;
       _lives = 3;
       _solvedInLevel = 0;
@@ -213,6 +300,14 @@ class _WordBuilderScreenState extends State<WordBuilderScreen>
   @override
   Widget build(BuildContext context) {
     final t = context.watch<AppProvider>().t;
+    if (_loadingProgress) {
+      // The stored level is read asynchronously; painting the board first
+      // would flash level 1 at a child who is really much further along.
+      return const Scaffold(
+        backgroundColor: _kBg,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       backgroundColor: _kBg,
       body: SafeArea(

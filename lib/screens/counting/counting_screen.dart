@@ -1,8 +1,14 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
+import 'package:provider/provider.dart';
+import '../../models/badge_model.dart';
+import '../../models/progression.dart';
+import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../services/sound_service.dart';
+import '../../widgets/reward_overlay.dart';
 import '../../widgets/buddy_mascot.dart';
 import '../../widgets/page_theme.dart';
 
@@ -36,6 +42,10 @@ class _CountingScreenState extends State<CountingScreen>
   late AnimationController _questionAnim;
   final _rand = Random();
 
+  /// Counting has levels, lives and a game over, so it is stored like the
+  /// other games rather than as a one-off creative activity.
+  static const _gameKey = 'count';
+
   int _level = 1;
   int _score = 0;
   int _targetCount = 0;
@@ -46,6 +56,13 @@ class _CountingScreenState extends State<CountingScreen>
   String _questionLabel = '';
   int _lives = 3;
   bool _gameOver = false;
+
+  /// Until the stored level has been read, painting would flash level 1 at a
+  /// child who is really much further along.
+  bool _loadingProgress = true;
+
+  /// Captured in [initState]: `context` cannot be read from [dispose].
+  late final AppProvider _db;
 
   static const _itemColors = [
     Color(0xFFFF6B35), Color(0xFFFFD700), Color(0xFF7BC67E),
@@ -65,11 +82,15 @@ class _CountingScreenState extends State<CountingScreen>
     _bounceController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
       ..repeat(reverse: true);
     _questionAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
-    _newRound();
+    _db = context.read<AppProvider>();
+    _restoreProgress();
   }
 
   @override
   void dispose() {
+    // Most runs end by walking away rather than by clearing a round.
+    _db.saveGameCheckpoint(_gameKey, level: _level, score: _score).catchError(
+        (_) {});
     _confettiController.dispose();
     _bounceController.dispose();
     _questionAnim.dispose();
@@ -153,17 +174,53 @@ class _CountingScreenState extends State<CountingScreen>
     });
     SoundService.instance.win();
     _confettiController.play();
-    Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) {
-        setState(() => _level++);
-        _newRound();
-      }
-    });
+    _completeLevel();
+  }
+
+  /// Banks a cleared round: records it, pays the stars it earned, and shows the
+  /// celebration when there is something new to celebrate.
+  Future<void> _completeLevel() async {
+    final provider = context.read<AppProvider>();
+    final cleared = _level;
+
+    GameReward? reward;
+    var newBadges = <BadgeModel>[];
+    try {
+      reward = await provider.recordGameLevel(
+        gameKey: _gameKey,
+        level: cleared,
+        rating: _lives,
+        perfect: _lives >= 3,
+        score: _score,
+      );
+      newBadges = List.of(provider.newlyEarnedBadges);
+    } catch (_) {
+      // A storage failure must never strand a child mid-celebration.
+    }
+
+    await Future.delayed(const Duration(milliseconds: 2500));
+    if (!mounted) return;
+    setState(() => _level = cleared + 1);
+    _newRound();
+    unawaited(provider
+        .saveGameCheckpoint(_gameKey, level: _level, score: _score)
+        .catchError((_) {}));
+
+    if (!mounted) return;
+    if ((reward?.paid ?? false) || newBadges.isNotEmpty) {
+      final t = provider.t;
+      await showRewardSheet(
+        context,
+        title: t('Round $cleared done!', 'Pusingan $cleared selesai!'),
+        stars: reward?.total ?? 0,
+        badges: newBadges,
+      );
+    }
   }
 
   void _restart() {
     setState(() {
-      _level = 1;
+      // Retry the round they were on; rounds already cleared stay cleared.
       _score = 0;
       _lives = 3;
       _gameOver = false;
@@ -171,8 +228,29 @@ class _CountingScreenState extends State<CountingScreen>
     _newRound();
   }
 
+  /// Picks up where the child left off instead of resetting to round 1.
+  Future<void> _restoreProgress() async {
+    var resume = 1;
+    try {
+      resume = (await _db.gameStats(_gameKey)).resumeLevel.clamp(1, 99);
+    } catch (_) {
+      // Storage unavailable — starting over beats refusing to open.
+    }
+    if (!mounted) return;
+    setState(() {
+      _level = resume;
+      _loadingProgress = false;
+    });
+    _newRound();
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_loadingProgress) {
+      // The stored round is read asynchronously; painting first would flash
+      // round 1 at a child who is really much further along.
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final grad = AppColors.gradients[(_level - 1) % AppColors.gradients.length];
     return Scaffold(
       body: Stack(

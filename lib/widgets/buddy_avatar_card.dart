@@ -13,9 +13,13 @@ class BuddyAvatarChoice {
   const BuddyAvatarChoice(this.variant, this.card);
 }
 
-/// Six choices, laid out 3x2. Colours repeat across the set the way a small
+/// Every Buddy that can be worn. Colours repeat across the set the way a small
 /// palette naturally does; the pairing, not the card colour, is what makes each
 /// card distinct.
+///
+/// The first six are free and always have been. The rest are sold in the
+/// star shop — they appear here locked rather than hidden, because a child
+/// cannot want something they have never seen.
 const List<BuddyAvatarChoice> kBuddyAvatarChoices = [
   BuddyAvatarChoice(BuddyVariant.buddy, Color(0xFFFFD24A)),
   BuddyAvatarChoice(BuddyVariant.lumi, Color(0xFFA8D8F0)),
@@ -23,6 +27,16 @@ const List<BuddyAvatarChoice> kBuddyAvatarChoices = [
   BuddyAvatarChoice(BuddyVariant.zuzu, Color(0xFFC77DE8)),
   BuddyAvatarChoice(BuddyVariant.tako, Color(0xFFFFD24A)),
   BuddyAvatarChoice(BuddyVariant.bub, Color(0xFFA8D8F0)),
+  BuddyAvatarChoice(BuddyVariant.nova, Color(0xFFC77DE8)),
+  BuddyAvatarChoice(BuddyVariant.coco, Color(0xFF7EE0A8)),
+  BuddyAvatarChoice(BuddyVariant.kiki, Color(0xFFFFD24A)),
+  BuddyAvatarChoice(BuddyVariant.momo, Color(0xFFA8D8F0)),
+  BuddyAvatarChoice(BuddyVariant.rio, Color(0xFFC77DE8)),
+  BuddyAvatarChoice(BuddyVariant.boba, Color(0xFF7EE0A8)),
+  BuddyAvatarChoice(BuddyVariant.yuki, Color(0xFFC77DE8)),
+  BuddyAvatarChoice(BuddyVariant.gigi, Color(0xFFFFD24A)),
+  BuddyAvatarChoice(BuddyVariant.zap, Color(0xFFFFD24A)),
+  BuddyAvatarChoice(BuddyVariant.onyx, Color(0xFFA8D8F0)),
 ];
 
 /// A tall block-colour card with the Buddy bleeding off the bottom edge.
@@ -31,11 +45,15 @@ class BuddyAvatarCard extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
+  /// Shown dimmed with a padlock when it has not been unlocked in the shop.
+  final bool locked;
+
   const BuddyAvatarCard({
     super.key,
     required this.choice,
     required this.selected,
     required this.onTap,
+    this.locked = false,
   });
 
   @override
@@ -79,6 +97,16 @@ class BuddyAvatarCard extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (locked)
+                        Positioned.fill(
+                          child: ColoredBox(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            child: const Center(
+                              child: Icon(Icons.lock_rounded,
+                                  size: 26, color: Colors.black54),
+                            ),
+                          ),
+                        ),
                       if (selected)
                         Positioned(
                           top: 8,

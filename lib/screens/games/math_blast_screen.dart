@@ -1,12 +1,16 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import 'package:provider/provider.dart';
+import '../../models/badge_model.dart';
+import '../../models/progression.dart';
 import '../../providers/app_provider.dart';
 import '../../services/sound_service.dart';
 import '../../widgets/bouncy_button.dart';
 import '../../widgets/buddy_mascot.dart';
 import '../../widgets/page_theme.dart';
+import '../../widgets/reward_overlay.dart';
 
 const _kBg = Color(0xFFFFF4E0);
 const _kRed = Color(0xFFE85B5B);
@@ -38,6 +42,10 @@ class _MathBlastScreenState extends State<MathBlastScreen>
   late ConfettiController _confetti;
   late AnimationController _shakeCtrl;
 
+  /// Key this game is stored under. Progress is keyed by game so each one
+  /// resumes independently.
+  static const _gameKey = 'math';
+
   int _level = 1;
   int _score = 0;
   int _lives = 3;
@@ -45,6 +53,10 @@ class _MathBlastScreenState extends State<MathBlastScreen>
   bool _gameOver = false;
   bool _celebrating = false;
   bool _answered = false;
+
+  /// Until the stored level has been read, showing level 1 would flash the
+  /// wrong number at a child who is really on level 9.
+  bool _loadingProgress = true;
 
   _Question? _q;
   List<int> _options = [];
@@ -59,17 +71,46 @@ class _MathBlastScreenState extends State<MathBlastScreen>
     _confetti = ConfettiController(duration: const Duration(seconds: 2));
     _shakeCtrl =
         AnimationController(vsync: this, duration: const Duration(milliseconds: 350));
+    _db = context.read<AppProvider>();
     SoundService.instance.playMusic('playful');
+    _restoreProgress();
+  }
+
+  /// Picks up where the child left off. Before this existed the level reset to
+  /// 1 on every launch, so a child who had reached level 9 lost all of it by
+  /// closing the app — the fastest way to make them stop coming back.
+  Future<void> _restoreProgress() async {
+    var resume = 1;
+    try {
+      final stats = await context.read<AppProvider>().gameStats(_gameKey);
+      resume = stats.resumeLevel.clamp(1, 99);
+    } catch (_) {
+      // Storage unavailable. Starting at level 1 is a worse experience than
+      // resuming, but it is far better than refusing to open the game.
+    }
+    if (!mounted) return;
+    setState(() {
+      _level = resume;
+      _loadingProgress = false;
+    });
     _newQuestion();
   }
 
   @override
   void dispose() {
+    // Most runs end by walking away rather than by finishing a level, so the
+    // checkpoint is written on the way out too.
+    _db.saveGameCheckpoint(_gameKey, level: _level, score: _score).catchError(
+        (_) {});
     _confetti.dispose();
     _shakeCtrl.dispose();
     SoundService.instance.playMusic('calm');
     super.dispose();
   }
+
+  /// Captured in [initState]: `context` cannot be read from [dispose], and a
+  /// lazy `late final` would first evaluate there — too late.
+  late final AppProvider _db;
 
   // ── Question generation ─────────────────────────────────────────────────────
 
@@ -165,15 +206,7 @@ class _MathBlastScreenState extends State<MathBlastScreen>
         SoundService.instance.win();
         _confetti.play();
         setState(() => _celebrating = true);
-        Future.delayed(const Duration(milliseconds: 1800), () {
-          if (!mounted) return;
-          setState(() {
-            _level++;
-            _solvedInLevel = 0;
-            _celebrating = false;
-          });
-          _newQuestion();
-        });
+        _completeLevel();
       } else {
         SoundService.instance.correct();
         setState(() {});
@@ -195,9 +228,66 @@ class _MathBlastScreenState extends State<MathBlastScreen>
     }
   }
 
+  /// Banks a cleared level: records it, pays the stars it earned, and shows the
+  /// celebration when there is something new to celebrate.
+  Future<void> _completeLevel() async {
+    final provider = context.read<AppProvider>();
+    final cleared = _level;
+
+    // Lives run across the whole session, so arriving at a level end with all
+    // three means an unbroken run — that is what the perfect bonus pays for.
+    GameReward? reward;
+    var newBadges = <BadgeModel>[];
+    try {
+      reward = await provider.recordGameLevel(
+        gameKey: _gameKey,
+        level: cleared,
+        rating: _lives,
+        perfect: _lives >= 3,
+        score: _score,
+      );
+      newBadges = List.of(provider.newlyEarnedBadges);
+    } catch (_) {
+      // Never let a storage failure strand a child on the celebration screen.
+    }
+
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+
+    setState(() {
+      _level = cleared + 1;
+      _solvedInLevel = 0;
+      _celebrating = false;
+    });
+    _newQuestion();
+    unawaited(provider
+        .saveGameCheckpoint(_gameKey, level: _level, score: _score)
+        .catchError((_) {}));
+
+    if (!mounted) return;
+    // Replaying a level already beaten pays nothing, and a modal with nothing
+    // in it is just an interruption — so only celebrate a real reward.
+    if ((reward?.paid ?? false) || newBadges.isNotEmpty) {
+      final t = provider.t;
+      await showRewardSheet(
+        context,
+        title: t('Level $cleared complete!', 'Tahap $cleared selesai!'),
+        subtitle: (reward?.perfectStars ?? 0) > 0
+            ? t('No lives lost — perfect!', 'Tiada nyawa hilang — sempurna!')
+            : null,
+        stars: reward?.total ?? 0,
+        badges: newBadges,
+        buddy: buddyVariantFromId(provider.userAvatar),
+        hat: provider.buddyHat,
+        accessory: provider.buddyAccessory,
+      );
+    }
+  }
+
   void _restart() {
     setState(() {
-      _level = 1;
+      // Retry the level they were on rather than sending them back to the
+      // start — the levels they already cleared stay cleared.
       _score = 0;
       _lives = 3;
       _solvedInLevel = 0;
@@ -212,6 +302,14 @@ class _MathBlastScreenState extends State<MathBlastScreen>
   @override
   Widget build(BuildContext context) {
     final t = context.watch<AppProvider>().t;
+    if (_loadingProgress) {
+      // The stored level is read asynchronously; painting the board first
+      // would flash level 1 at a child who is really on level 9.
+      return const Scaffold(
+        backgroundColor: _kBg,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       backgroundColor: _kBg,
       body: SafeArea(

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'providers/app_provider.dart';
+import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 
@@ -17,6 +20,11 @@ void main() async {
       statusBarIconBrightness: Brightness.dark,
     ),
   );
+  // Android drops scheduled alarms on reboot, so the stored reminder is
+  // re-applied every launch. Does nothing when a parent has not enabled one.
+  await NotificationService.instance.init();
+  unawaited(NotificationService.instance.refresh());
+
   runApp(const EduBuddyApp());
 }
 

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
+import 'package:provider/provider.dart';
+import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
 import '../../widgets/buddy_mascot.dart';
 import '../../widgets/page_theme.dart';
+import '../../widgets/reward_overlay.dart';
 
 enum _Tool { pen, eraser, fill }
 
@@ -93,8 +96,32 @@ class _DrawingStudioScreenState extends State<DrawingStudioScreen>
     });
   }
 
+  /// Paid once per visit: a free-draw studio has no natural finish line, so
+  /// the child showing off their drawing is the completion signal.
+  bool _awarded = false;
+
   void _celebrate() {
     _confettiController.play();
+    _award();
+  }
+
+  /// Pays for a finished drawing. The studio earned nothing before this.
+  Future<void> _award() async {
+    if (_awarded || _ops.isEmpty) return;
+    _awarded = true;
+    final provider = context.read<AppProvider>();
+    try {
+      await provider.markCreativeDone('drawing');
+    } catch (_) {
+      return;
+    }
+    final badges = List.of(provider.newlyEarnedBadges);
+    if (!mounted || badges.isEmpty) return;
+    await showRewardSheet(
+      context,
+      title: provider.t('New badge!', 'Lencana baharu!'),
+      badges: badges,
+    );
   }
 
   @override

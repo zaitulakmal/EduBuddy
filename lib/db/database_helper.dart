@@ -2,9 +2,11 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/category_model.dart';
 import '../models/quiz_model.dart';
+import '../models/story_library.dart';
 import '../models/storybook_model.dart';
 import '../models/worksheet_model.dart';
 import '../models/badge_model.dart';
+import '../models/progression.dart';
 
 class DatabaseHelper {
   static DatabaseHelper? _instance;
@@ -24,11 +26,19 @@ class DatabaseHelper {
     _db = null;
   }
 
+  /// File the database is opened from.
+  ///
+  /// Only tests change this: `flutter test` runs each file in its own isolate
+  /// but they share one databases directory, so two test files that both open
+  /// 'edubuddy.db' deadlock each other. Each test file points this at its own
+  /// name. Production never assigns it.
+  static String databaseName = 'edubuddy.db';
+
   Future<Database> _initDb() async {
-    final path = join(await getDatabasesPath(), 'edubuddy.db');
+    final path = join(await getDatabasesPath(), databaseName);
     return openDatabase(
       path,
-      version: 5,
+      version: 9,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -50,6 +60,18 @@ class DatabaseHelper {
             'ALTER TABLE quiz_questions ADD COLUMN emoji TEXT DEFAULT ""');
       } catch (_) {}
       await _seedMalaysiaSyllabusQuizzes(db);
+    }
+    if (oldVersion < 6) {
+      await _migrateToV6(db);
+    }
+    if (oldVersion < 7) {
+      await _createStickerTable(db);
+    }
+    if (oldVersion < 8) {
+      await _addColumnIfMissing(db, 'user_profile', 'buddy_accessory', 'TEXT');
+    }
+    if (oldVersion < 9) {
+      await _migrateToV9(db);
     }
   }
 
@@ -122,6 +144,7 @@ class DatabaseHelper {
         age_group TEXT NOT NULL,
         page_count INTEGER NOT NULL,
         is_read INTEGER DEFAULT 0,
+        story_key TEXT,
         FOREIGN KEY (category_id) REFERENCES categories(id)
       )
     ''');
@@ -179,10 +202,21 @@ class DatabaseHelper {
         stories_read INTEGER DEFAULT 0,
         worksheets_done INTEGER DEFAULT 0,
         streak_days INTEGER DEFAULT 0,
-        last_active TEXT
+        last_active TEXT,
+        best_streak INTEGER DEFAULT 0,
+        streak_freezes INTEGER DEFAULT 1,
+        stars_spent INTEGER DEFAULT 0,
+        games_played INTEGER DEFAULT 0,
+        creative_done INTEGER DEFAULT 0,
+        daily_done INTEGER DEFAULT 0,
+        buddy_hat TEXT,
+        theme_key TEXT,
+        buddy_accessory TEXT
       )
     ''');
 
+    await _createProgressionTables(db);
+    await _createStickerTable(db);
     await _seedData(db);
   }
 
@@ -351,6 +385,7 @@ class DatabaseHelper {
     for (final p in [...story1Pages, ...story2Pages, ...story3Pages]) {
       await db.insert('storybook_pages', p);
     }
+    await _seedStoryLibrary(db);
 
     // Insert worksheets
     final worksheetData = [
@@ -370,18 +405,7 @@ class DatabaseHelper {
       await db.insert('worksheets', w);
     }
 
-    // Insert badges
-    final badgeData = [
-      {'name': 'First Star', 'name_ms': 'Bintang Pertama', 'description': 'Complete your first quiz!', 'emoji': '⭐', 'requirement': 'quizzes', 'required_count': 1, 'is_earned': 0},
-      {'name': 'Bookworm', 'name_ms': 'Kutu Buku', 'description': 'Read 3 storybooks!', 'emoji': '📚', 'requirement': 'stories', 'required_count': 3, 'is_earned': 0},
-      {'name': 'Quiz Champion', 'name_ms': 'Juara Kuiz', 'description': 'Get 100% in any quiz!', 'emoji': '🏆', 'requirement': 'perfect', 'required_count': 1, 'is_earned': 0},
-      {'name': 'Super Learner', 'name_ms': 'Pelajar Super', 'description': 'Complete 10 worksheets!', 'emoji': '🎓', 'requirement': 'worksheets', 'required_count': 10, 'is_earned': 0},
-      {'name': 'Explorer', 'name_ms': 'Penjelajah', 'description': 'Try all 4 categories!', 'emoji': '🗺️', 'requirement': 'categories', 'required_count': 4, 'is_earned': 0},
-    ];
-
-    for (final b in badgeData) {
-      await db.insert('badges', b);
-    }
+    await _seedBadges(db);
 
     // Insert default user profile
     await db.insert('user_profile', {
@@ -395,6 +419,12 @@ class DatabaseHelper {
       'worksheets_done': 0,
       'streak_days': 1,
       'last_active': DateTime.now().toIso8601String(),
+      'best_streak': 1,
+      'streak_freezes': 1,
+      'stars_spent': 0,
+      'games_played': 0,
+      'creative_done': 0,
+      'daily_done': 0,
     });
   }
 
@@ -435,6 +465,10 @@ class DatabaseHelper {
     await db.rawUpdate(
         'UPDATE user_profile SET quizzes_completed = quizzes_completed + 1, total_stars = total_stars + ? WHERE id = 1',
         [score]);
+    await logActivity('quiz',
+        label: quiz.isEmpty ? null : quiz.first['title'] as String?,
+        stars: score);
+    await _bumpChallenge('quiz');
   }
 
   // ==================== STORYBOOKS ====================
@@ -457,6 +491,11 @@ class DatabaseHelper {
     final db = await database;
     await db.update('storybooks', {'is_read': 1}, where: 'id = ?', whereArgs: [id]);
     await db.rawUpdate('UPDATE user_profile SET stories_read = stories_read + 1, total_stars = total_stars + 2 WHERE id = 1');
+    final book = await db.query('storybooks',
+        columns: ['title'], where: 'id = ?', whereArgs: [id]);
+    await logActivity('story',
+        label: book.isEmpty ? null : book.first['title'] as String?, stars: 2);
+    await _bumpChallenge('story');
   }
 
   // ==================== WORKSHEETS ====================
@@ -472,6 +511,11 @@ class DatabaseHelper {
     final db = await database;
     await db.update('worksheets', {'is_completed': 1}, where: 'id = ?', whereArgs: [id]);
     await db.rawUpdate('UPDATE user_profile SET worksheets_done = worksheets_done + 1, total_stars = total_stars + 1 WHERE id = 1');
+    final sheet = await db.query('worksheets',
+        columns: ['title'], where: 'id = ?', whereArgs: [id]);
+    await logActivity('worksheet',
+        label: sheet.isEmpty ? null : sheet.first['title'] as String?, stars: 1);
+    await _bumpChallenge('worksheet');
   }
 
   // ==================== BADGES ====================
@@ -493,6 +537,11 @@ class DatabaseHelper {
         Sqflite.firstIntValue(await db.rawQuery(sql)) ?? 0;
 
     final profile = await getUserProfile();
+
+    Future<int> bestLevel(String key) async => count(
+        "SELECT COALESCE(MAX(best_level), 0) FROM game_stats "
+        "WHERE game_key = '$key'");
+
     return {
       'quizzes': (profile?['quizzes_completed'] as int?) ?? 0,
       'stories': (profile?['stories_read'] as int?) ?? 0,
@@ -509,6 +558,22 @@ class DatabaseHelper {
       'categories':
           await count('SELECT COUNT(DISTINCT category_id) FROM quizzes '
               'WHERE is_completed = 1'),
+
+      // Habit and economy milestones.
+      'streak': (profile?['best_streak'] as int?) ?? 0,
+      'stars': (profile?['total_stars'] as int?) ?? 0,
+      'creative': (profile?['creative_done'] as int?) ?? 0,
+      'daily': (profile?['daily_done'] as int?) ?? 0,
+
+      // Mini-game milestones. Levels cleared is counted across every game so a
+      // child who only likes one of them still moves the badge along.
+      'game_levels': await count('SELECT COUNT(*) FROM game_levels'),
+      'math_level': await bestLevel('math'),
+      'word_level': await bestLevel('word'),
+      'memory_stars': await count(
+          "SELECT COALESCE(SUM(rating), 0) FROM game_levels "
+          "WHERE game_key = 'memory'"),
+      'unlocks': await count('SELECT COUNT(*) FROM unlocks'),
     };
   }
 
@@ -1421,5 +1486,766 @@ class DatabaseHelper {
       mq(mt4, '1.2 km = berapa meter?', '12m|120m|1200m|12000m', 2, '📏'),
       mq(mt4, '75% daripada 100 = ?', '65|70|75|80', 2, '📊'),
     ]);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PROGRESSION
+  //
+  // Everything below backs the retention loop: the daily streak, per-game
+  // progress that survives a restart, the star economy the games feed, the
+  // daily challenge, the cosmetics shop, and the activity log the parent
+  // report reads. The rules live here rather than in the screens so one
+  // change applies everywhere and can be tested without a widget.
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /// Tables backing streaks, game progress, the shop, the daily challenge and
+  /// the parent report.
+  ///
+  /// Called by both [_onCreate] and the v6 migration so a fresh install and an
+  /// upgraded one end up with an identical schema.
+  Future<void> _createProgressionTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS game_levels (
+        game_key TEXT NOT NULL,
+        level INTEGER NOT NULL,
+        rating INTEGER NOT NULL DEFAULT 1,
+        perfect INTEGER NOT NULL DEFAULT 0,
+        cleared_at TEXT,
+        PRIMARY KEY (game_key, level)
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS game_stats (
+        game_key TEXT PRIMARY KEY,
+        best_level INTEGER NOT NULL DEFAULT 0,
+        last_level INTEGER NOT NULL DEFAULT 0,
+        high_score INTEGER NOT NULL DEFAULT 0,
+        plays INTEGER NOT NULL DEFAULT 0,
+        last_played TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS unlocks (
+        item_key TEXT PRIMARY KEY,
+        unlocked_at TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS daily_challenge (
+        day TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        target_count INTEGER NOT NULL DEFAULT 1,
+        progress INTEGER NOT NULL DEFAULT 0,
+        reward INTEGER NOT NULL DEFAULT 10,
+        claimed INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS activity_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        day TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        label TEXT,
+        stars INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_activity_day ON activity_log(day)');
+  }
+
+  /// Adds a column only when it is missing, so the migration is safe to run
+  /// against a database that has already been partly upgraded.
+  Future<void> _addColumnIfMissing(
+      Database db, String table, String column, String decl) async {
+    final cols = await db.rawQuery('PRAGMA table_info($table)');
+    if (cols.any((c) => c['name'] == column)) return;
+    await db.execute('ALTER TABLE $table ADD COLUMN $column $decl');
+  }
+
+  /// Adds the story library. Guarded on the tables existing, since a database
+  /// that never had storybooks has nothing to attach them to.
+  Future<void> _migrateToV9(Database db) async {
+    final tables = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('storybooks', 'categories')");
+    if (tables.length < 2) return;
+    await _addColumnIfMissing(db, 'storybooks', 'story_key', 'TEXT');
+    await _seedStoryLibrary(db);
+  }
+
+  /// Inserts every [kStoryLibrary] book that is not already present, matched
+  /// on `story_key`, so running it twice adds nothing.
+  Future<void> _seedStoryLibrary(Database db) async {
+    final cats = await db.query('categories', columns: ['id', 'name']);
+    if (cats.isEmpty) return;
+    final catIds = {for (final c in cats) c['name'] as String: c['id'] as int};
+    final existing = (await db.query('storybooks',
+            columns: ['story_key'], where: 'story_key IS NOT NULL'))
+        .map((r) => r['story_key'] as String)
+        .toSet();
+
+    for (final story in kStoryLibrary) {
+      if (existing.contains(story.key)) continue;
+      final bookId = await db.insert('storybooks', {
+        'title': story.title,
+        'title_ms': story.titleMs,
+        'description': story.description,
+        'cover_emoji': story.coverEmoji,
+        'category_id': catIds[story.category] ?? cats.first['id'],
+        'age_group': story.ageGroup,
+        'page_count': story.pages.length,
+        'is_read': 0,
+        'story_key': story.key,
+      });
+      for (var i = 0; i < story.pages.length; i++) {
+        final page = story.pages[i];
+        await db.insert('storybook_pages', {
+          'storybook_id': bookId,
+          'page_number': i + 1,
+          'text': page.text,
+          'text_ms': page.textMs,
+          'background_emoji': story.coverEmoji,
+          'background_color': page.shot.night ? '#1a1a3e' : '#87ceeb',
+        });
+      }
+    }
+  }
+
+  Future<void> _migrateToV6(Database db) async {
+    await _createProgressionTables(db);
+    const newColumns = <(String, String)>[
+      ('best_streak', 'INTEGER DEFAULT 0'),
+      ('streak_freezes', 'INTEGER DEFAULT 1'),
+      ('stars_spent', 'INTEGER DEFAULT 0'),
+      ('games_played', 'INTEGER DEFAULT 0'),
+      ('creative_done', 'INTEGER DEFAULT 0'),
+      ('daily_done', 'INTEGER DEFAULT 0'),
+      ('buddy_hat', 'TEXT'),
+      ('theme_key', 'TEXT'),
+    ];
+    for (final (col, decl) in newColumns) {
+      await _addColumnIfMissing(db, 'user_profile', col, decl);
+    }
+    // Someone upgrading already has a streak; do not hand them a worse record
+    // than the one they have been carrying.
+    await db.rawUpdate('UPDATE user_profile SET best_streak = '
+        'MAX(COALESCE(best_streak, 0), COALESCE(streak_days, 0)) WHERE id = 1');
+    await _seedBadges(db);
+  }
+
+  // ── Day boundaries ────────────────────────────────────────────────────────
+
+  /// The local calendar day an instant falls on, as `yyyy-MM-dd`.
+  ///
+  /// Streaks and the daily challenge both turn over at local midnight, because
+  /// that is what a child experiences as "a new day" — not UTC, and not 24
+  /// hours after the last visit.
+  static String dayKey([DateTime? at]) {
+    final d = at ?? DateTime.now();
+    final month = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    return '${d.year}-$month-$day';
+  }
+
+  static DateTime _dayStart(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  // ── Streak ────────────────────────────────────────────────────────────────
+
+  /// Records a visit and moves the daily streak.
+  ///
+  /// Rules, all in local calendar days:
+  ///  * same day — nothing changes (opening the app twice is still one day)
+  ///  * next day — streak + 1
+  ///  * exactly one day missed with a freeze banked — the freeze is spent and
+  ///    the streak survives
+  ///  * anything longer — the streak restarts at 1
+  ///
+  /// A freeze is granted every 5 streak days and at most 2 are held. Losing a
+  /// long streak to one busy day is the usual moment a child gives up on a
+  /// habit app, and the freeze is what keeps a single miss from ending it.
+  Future<StreakResult> touchStreak({DateTime? now}) async {
+    final db = await database;
+    final at = now ?? DateTime.now();
+    final profile = await getUserProfile();
+
+    final lastRaw = profile?['last_active'] as String?;
+    final stored = (profile?['streak_days'] as int?) ?? 0;
+    // A streak in progress is at least as good as the recorded best. Reading
+    // it this way keeps the record truthful even when the streak column was
+    // written by another path — the v6 migration, or a restored backup —
+    // without that path having to remember to update the record too.
+    final storedBest = (profile?['best_streak'] as int?) ?? 0;
+    final best = stored > storedBest ? stored : storedBest;
+    var freezes = (profile?['streak_freezes'] as int?) ?? 0;
+
+    final last =
+        (lastRaw == null || lastRaw.isEmpty) ? null : DateTime.tryParse(lastRaw);
+
+    var streak = stored < 1 ? 1 : stored;
+    var advanced = false;
+    var freezeUsed = false;
+    var reset = false;
+
+    if (last == null) {
+      streak = 1;
+      advanced = true;
+    } else {
+      final gap = _dayStart(at).difference(_dayStart(last)).inDays;
+      if (gap <= 0) {
+        // Same day, or a clock that moved backwards. Nothing to do — and in
+        // particular, never punish a child for a device clock change.
+      } else if (gap == 1) {
+        streak += 1;
+        advanced = true;
+      } else if (gap == 2 && freezes > 0) {
+        freezes -= 1;
+        streak += 1;
+        advanced = true;
+        freezeUsed = true;
+      } else {
+        streak = 1;
+        reset = true;
+      }
+    }
+
+    var earned = 0;
+    if (advanced && streak % 5 == 0 && freezes < 2) {
+      freezes += 1;
+      earned = 1;
+    }
+
+    final newBest = streak > best ? streak : best;
+    await db.update(
+      'user_profile',
+      {
+        'streak_days': streak,
+        'best_streak': newBest,
+        'streak_freezes': freezes,
+        'last_active': at.toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [1],
+    );
+
+    return StreakResult(
+      current: streak,
+      best: newBest,
+      advanced: advanced,
+      freezeUsed: freezeUsed,
+      reset: reset,
+      freezesLeft: freezes,
+      freezesEarned: earned,
+    );
+  }
+
+  /// Hours since the last recorded visit, or null when there has never been
+  /// one. Drives Buddy's mood.
+  Future<double?> hoursSinceLastVisit({DateTime? now}) async {
+    final profile = await getUserProfile();
+    final raw = profile?['last_active'] as String?;
+    if (raw == null || raw.isEmpty) return null;
+    final last = DateTime.tryParse(raw);
+    if (last == null) return null;
+    return (now ?? DateTime.now()).difference(last).inMinutes / 60.0;
+  }
+
+  // ── Stars ─────────────────────────────────────────────────────────────────
+
+  Future<void> _addStars(Database db, int stars) async {
+    if (stars == 0) return;
+    await db.rawUpdate(
+        'UPDATE user_profile SET total_stars = total_stars + ? WHERE id = 1',
+        [stars]);
+  }
+
+  /// Stars still available to spend: everything earned, minus what the shop
+  /// has taken. Lifetime `total_stars` is left intact so badges that reward
+  /// collecting stars are not undone by spending them.
+  Future<int> spendableStars() async {
+    final profile = await getUserProfile();
+    final earned = (profile?['total_stars'] as int?) ?? 0;
+    final spent = (profile?['stars_spent'] as int?) ?? 0;
+    final left = earned - spent;
+    return left < 0 ? 0 : left;
+  }
+
+  // ── Activity log ──────────────────────────────────────────────────────────
+
+  /// Records one finished activity. This is the only source the parent report
+  /// reads, so anything that should appear in a weekly summary must log here.
+  Future<void> logActivity(
+    String kind, {
+    String? label,
+    int stars = 0,
+    DateTime? now,
+  }) async {
+    final db = await database;
+    final at = now ?? DateTime.now();
+    await db.insert('activity_log', {
+      'day': dayKey(at),
+      'kind': kind,
+      'label': label,
+      'stars': stars,
+      'created_at': at.toIso8601String(),
+    });
+  }
+
+  /// The last [days] days of activity, oldest first, with empty days included
+  /// so the report can draw a continuous week.
+  Future<List<DayReport>> weeklyReport({DateTime? now, int days = 7}) async {
+    final db = await database;
+    final today = _dayStart(now ?? DateTime.now());
+    final from = today.subtract(Duration(days: days - 1));
+
+    final rows = await db.rawQuery(
+      'SELECT day, kind, COUNT(*) AS n, COALESCE(SUM(stars), 0) AS s '
+      'FROM activity_log WHERE day >= ? GROUP BY day, kind',
+      [dayKey(from)],
+    );
+
+    final counts = <String, Map<String, int>>{};
+    final stars = <String, int>{};
+    for (final r in rows) {
+      final day = r['day'] as String;
+      counts.putIfAbsent(day, () => <String, int>{})[r['kind'] as String] =
+          (r['n'] as int?) ?? 0;
+      stars[day] = (stars[day] ?? 0) + ((r['s'] as int?) ?? 0);
+    }
+
+    return List.generate(days, (i) {
+      final day = dayKey(from.add(Duration(days: i)));
+      return DayReport(
+        day: day,
+        counts: counts[day] ?? const {},
+        stars: stars[day] ?? 0,
+      );
+    });
+  }
+
+  // ── Daily challenge ───────────────────────────────────────────────────────
+
+  /// The rotation the daily challenge draws from. Every entry maps to
+  /// something the app actually has, so a challenge is never unfinishable.
+  static const List<String> _challengeKinds = [
+    'quiz',
+    'story',
+    'math',
+    'word',
+    'memory',
+    'worksheet',
+    'creative',
+  ];
+
+  /// Stable hash of a `yyyy-MM-dd` key, so the same date always yields the
+  /// same challenge on every device and across reinstalls.
+  static int _daySeed(String day) {
+    var h = 7;
+    for (final c in day.codeUnits) {
+      h = (h * 31 + c) & 0x7fffffff;
+    }
+    return h;
+  }
+
+  static int _targetFor(String kind) =>
+      (kind == 'math' || kind == 'word') ? 2 : 1;
+
+  /// Today's challenge, created on first read.
+  ///
+  /// Derived from the calendar date rather than from whatever the child has
+  /// left unfinished, so it is the same all day, resets at local midnight, and
+  /// gives a real reason to come back tomorrow.
+  Future<DailyChallenge> todaysChallenge({DateTime? now}) async {
+    final db = await database;
+    final day = dayKey(now);
+
+    final existing =
+        await db.query('daily_challenge', where: 'day = ?', whereArgs: [day]);
+    if (existing.isNotEmpty) return _challengeFrom(existing.first);
+
+    final kind = _challengeKinds[_daySeed(day) % _challengeKinds.length];
+    final row = <String, Object?>{
+      'day': day,
+      'kind': kind,
+      'target_count': _targetFor(kind),
+      'progress': 0,
+      'reward': 10,
+      'claimed': 0,
+    };
+    await db.insert('daily_challenge', row,
+        conflictAlgorithm: ConflictAlgorithm.ignore);
+    return _challengeFrom(row);
+  }
+
+  DailyChallenge _challengeFrom(Map<String, Object?> row) => DailyChallenge(
+        day: row['day'] as String,
+        kind: row['kind'] as String,
+        targetCount: (row['target_count'] as int?) ?? 1,
+        progress: (row['progress'] as int?) ?? 0,
+        reward: (row['reward'] as int?) ?? 10,
+        claimed: ((row['claimed'] as int?) ?? 0) == 1,
+      );
+
+  /// Moves today's challenge along when the child does something of [kind].
+  /// A no-op when today's challenge asks for something else.
+  Future<void> _bumpChallenge(String kind, {DateTime? now}) async {
+    final db = await database;
+    final challenge = await todaysChallenge(now: now);
+    if (challenge.kind != kind || challenge.isComplete) return;
+    await db.rawUpdate(
+      'UPDATE daily_challenge SET progress = progress + 1 WHERE day = ?',
+      [challenge.day],
+    );
+  }
+
+  /// Pays out today's challenge once it is finished. Returns the stars given,
+  /// or 0 when there is nothing to claim (unfinished, or already claimed).
+  Future<int> claimDailyChallenge({DateTime? now}) async {
+    final db = await database;
+    final challenge = await todaysChallenge(now: now);
+    if (!challenge.isClaimable) return 0;
+
+    await db.update('daily_challenge', {'claimed': 1},
+        where: 'day = ?', whereArgs: [challenge.day]);
+    await db.rawUpdate('UPDATE user_profile SET daily_done = '
+        'COALESCE(daily_done, 0) + 1 WHERE id = 1');
+    await _addStars(db, challenge.reward);
+    await logActivity('daily',
+        label: challenge.kind, stars: challenge.reward, now: now);
+    return challenge.reward;
+  }
+
+  // ── Mini-game progress ────────────────────────────────────────────────────
+
+  /// Where the child has reached in one game, including the per-level ratings
+  /// a level map needs.
+  Future<GameStats> gameStats(String gameKey) async {
+    final db = await database;
+    final stats =
+        await db.query('game_stats', where: 'game_key = ?', whereArgs: [gameKey]);
+    final levels = await db.query('game_levels',
+        columns: ['level', 'rating'],
+        where: 'game_key = ?',
+        whereArgs: [gameKey]);
+
+    final ratings = <int, int>{
+      for (final r in levels) (r['level'] as int): (r['rating'] as int?) ?? 0,
+    };
+
+    if (stats.isEmpty) {
+      return GameStats(
+        gameKey: gameKey,
+        bestLevel: 0,
+        lastLevel: 0,
+        highScore: 0,
+        plays: 0,
+        ratings: ratings,
+      );
+    }
+
+    final row = stats.first;
+    return GameStats(
+      gameKey: gameKey,
+      bestLevel: (row['best_level'] as int?) ?? 0,
+      lastLevel: (row['last_level'] as int?) ?? 0,
+      highScore: (row['high_score'] as int?) ?? 0,
+      plays: (row['plays'] as int?) ?? 0,
+      ratings: ratings,
+    );
+  }
+
+  Future<void> _upsertGameStats(
+    Database db,
+    String gameKey, {
+    int? level,
+    int? score,
+    bool countPlay = false,
+  }) async {
+    final now = DateTime.now().toIso8601String();
+    await db.insert(
+      'game_stats',
+      {
+        'game_key': gameKey,
+        'best_level': level ?? 0,
+        'last_level': level ?? 0,
+        'high_score': score ?? 0,
+        'plays': countPlay ? 1 : 0,
+        'last_played': now,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+    await db.rawUpdate(
+      'UPDATE game_stats SET '
+      'best_level = MAX(best_level, ?), '
+      'last_level = ?, '
+      'high_score = MAX(high_score, ?), '
+      'plays = plays + ?, '
+      'last_played = ? '
+      'WHERE game_key = ?',
+      [level ?? 0, level ?? 0, score ?? 0, countPlay ? 1 : 0, now, gameKey],
+    );
+  }
+
+  /// Remembers where a run stopped so reopening the game resumes there instead
+  /// of dropping the child back at level 1. Called when a game is left, not
+  /// only when a level is cleared, because most runs end by walking away.
+  Future<void> saveGameCheckpoint(
+    String gameKey, {
+    required int level,
+    int score = 0,
+  }) async {
+    final db = await database;
+    await _upsertGameStats(db, gameKey, level: level, score: score);
+  }
+
+  /// Records a cleared level and pays the stars it is worth.
+  ///
+  /// Payout is 2 stars the first time a level is cleared, plus 3 the first
+  /// time it is cleared without losing a life. Replaying a level already
+  /// beaten pays nothing, so the economy cannot be farmed by grinding level 1
+  /// — which matters now that stars buy things. Going back to earn a clean run
+  /// on an old level still pays the bonus, which is the good kind of replay.
+  Future<GameReward> recordGameLevel({
+    required String gameKey,
+    required int level,
+    required int rating,
+    bool perfect = false,
+    int score = 0,
+    String? label,
+    DateTime? now,
+  }) async {
+    final db = await database;
+    final safeRating = rating.clamp(1, 3);
+
+    final existing = await db.query('game_levels',
+        where: 'game_key = ? AND level = ?', whereArgs: [gameKey, level]);
+
+    final firstClear = existing.isEmpty;
+    final wasPerfect =
+        !firstClear && ((existing.first['perfect'] as int?) ?? 0) == 1;
+    final prevRating = firstClear ? 0 : ((existing.first['rating'] as int?) ?? 0);
+
+    final clearStars = firstClear ? 2 : 0;
+    final perfectStars = (perfect && !wasPerfect) ? 3 : 0;
+
+    await db.insert(
+      'game_levels',
+      {
+        'game_key': gameKey,
+        'level': level,
+        'rating': safeRating > prevRating ? safeRating : prevRating,
+        'perfect': (perfect || wasPerfect) ? 1 : 0,
+        'cleared_at': (now ?? DateTime.now()).toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+
+    await _upsertGameStats(db, gameKey,
+        level: level, score: score, countPlay: firstClear);
+
+    final total = clearStars + perfectStars;
+    if (total > 0) {
+      await _addStars(db, total);
+      await db.rawUpdate('UPDATE user_profile SET games_played = '
+          'COALESCE(games_played, 0) + 1 WHERE id = 1');
+    }
+
+    await logActivity(gameKey,
+        label: label ?? 'Level $level', stars: total, now: now);
+    await _bumpChallenge(gameKey, now: now);
+
+    return GameReward(
+      clearStars: clearStars,
+      perfectStars: perfectStars,
+      improved: safeRating > prevRating,
+      firstClear: firstClear,
+    );
+  }
+
+  /// Records a level cleared before the star economy existed.
+  ///
+  /// The rating is kept, so the level map and the badges that read it are
+  /// correct, but no stars are paid: back-paying a long-time player for every
+  /// level they ever cleared would hand them the whole shop on upgrade day.
+  Future<void> importClearedLevel({
+    required String gameKey,
+    required int level,
+    required int rating,
+  }) async {
+    final db = await database;
+    await db.insert(
+      'game_levels',
+      {
+        'game_key': gameKey,
+        'level': level,
+        'rating': rating.clamp(1, 3),
+        'perfect': rating >= 3 ? 1 : 0,
+        'cleared_at': null,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+    await _upsertGameStats(db, gameKey, level: level);
+  }
+
+  // ── Creative activities ───────────────────────────────────────────────────
+
+  /// Records a finished drawing, colouring page, tracing sheet or counting
+  /// round. These paid nothing before, so the most-played parts of the app fed
+  /// neither stars nor badges.
+  Future<int> markCreativeDone(String kind,
+      {String? label, DateTime? now}) async {
+    final db = await database;
+    const stars = 1;
+    await db.rawUpdate('UPDATE user_profile SET creative_done = '
+        'COALESCE(creative_done, 0) + 1 WHERE id = 1');
+    await _addStars(db, stars);
+    await logActivity(kind, label: label, stars: stars, now: now);
+    await _bumpChallenge('creative', now: now);
+    return stars;
+  }
+
+  // ── Sticker book ──────────────────────────────────────────────────────────
+
+  /// Stickers are earned by playing Buddy Reader, never bought. They live in
+  /// their own table rather than `unlocks` because the shop badges count every
+  /// `unlocks` row as a purchase.
+  ///
+  /// Called by both [_onCreate] and the v7 migration.
+  Future<void> _createStickerTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS stickers (
+        sticker_key TEXT PRIMARY KEY,
+        collected_at TEXT
+      )
+    ''');
+  }
+
+  Future<Set<String>> collectedStickers() async {
+    final db = await database;
+    final rows = await db.query('stickers', columns: ['sticker_key']);
+    return rows.map((r) => r['sticker_key'] as String).toSet();
+  }
+
+  /// Adds a sticker to the book. Returns false — changing nothing — when it
+  /// was already collected.
+  Future<bool> collectSticker(String stickerKey) async {
+    final db = await database;
+    final id = await db.insert(
+      'stickers',
+      {'sticker_key': stickerKey, 'collected_at': DateTime.now().toIso8601String()},
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+    return id != 0;
+  }
+
+  // ── Shop ──────────────────────────────────────────────────────────────────
+
+  Future<Set<String>> unlockedItems() async {
+    final db = await database;
+    final rows = await db.query('unlocks', columns: ['item_key']);
+    return rows.map((r) => r['item_key'] as String).toSet();
+  }
+
+  /// Spends stars on a cosmetic. Returns false — changing nothing — when the
+  /// item is already owned or there are not enough stars, so the UI can never
+  /// drive the balance negative.
+  Future<bool> unlockItem(String itemKey, int cost) async {
+    final db = await database;
+    final owned =
+        await db.query('unlocks', where: 'item_key = ?', whereArgs: [itemKey]);
+    if (owned.isNotEmpty) return false;
+    if (await spendableStars() < cost) return false;
+
+    await db.insert('unlocks', {
+      'item_key': itemKey,
+      'unlocked_at': DateTime.now().toIso8601String(),
+    });
+    await db.rawUpdate(
+        'UPDATE user_profile SET stars_spent = COALESCE(stars_spent, 0) + ? '
+        'WHERE id = 1',
+        [cost]);
+    return true;
+  }
+
+  /// Persists the cosmetics the child is currently wearing. Passing neither
+  /// changes nothing rather than issuing an empty UPDATE.
+  Future<void> setCosmetics({String? hat, String? theme, String? accessory}) async {
+    if (hat == null && theme == null && accessory == null) return;
+    final db = await database;
+    await db.update(
+      'user_profile',
+      {'buddy_hat': ?hat, 'theme_key': ?theme, 'buddy_accessory': ?accessory},
+      where: 'id = ?',
+      whereArgs: [1],
+    );
+  }
+
+  // ── Badges ────────────────────────────────────────────────────────────────
+
+  /// Every badge the app defines.
+  ///
+  /// The five original names are load-bearing: profiles created before this
+  /// list existed already hold them, and [_seedBadges] matches on name so they
+  /// are never duplicated.
+  static const List<Map<String, Object>> _badgeCatalog = [
+    // Quizzes
+    {'name': 'First Star', 'name_ms': 'Bintang Pertama', 'description': 'Complete your first quiz!', 'emoji': '⭐', 'requirement': 'quizzes', 'required_count': 1},
+    {'name': 'Quiz Master', 'name_ms': 'Sifu Kuiz', 'description': 'Complete 10 quizzes!', 'emoji': '🧠', 'requirement': 'quizzes', 'required_count': 10},
+    {'name': 'Quiz Legend', 'name_ms': 'Lagenda Kuiz', 'description': 'Complete 25 quizzes!', 'emoji': '👑', 'requirement': 'quizzes', 'required_count': 25},
+    {'name': 'Quiz Champion', 'name_ms': 'Juara Kuiz', 'description': 'Get 100% in any quiz!', 'emoji': '🏆', 'requirement': 'perfect', 'required_count': 1},
+    {'name': 'Flawless Five', 'name_ms': 'Lima Sempurna', 'description': 'Get 100% in 5 quizzes!', 'emoji': '💎', 'requirement': 'perfect', 'required_count': 5},
+    {'name': 'Explorer', 'name_ms': 'Penjelajah', 'description': 'Try all 4 categories!', 'emoji': '🗺️', 'requirement': 'categories', 'required_count': 4},
+
+    // Reading
+    {'name': 'Bookworm', 'name_ms': 'Kutu Buku', 'description': 'Read 3 storybooks!', 'emoji': '📚', 'requirement': 'stories', 'required_count': 3},
+    {'name': 'Story Lover', 'name_ms': 'Pencinta Cerita', 'description': 'Read 8 storybooks!', 'emoji': '📖', 'requirement': 'stories', 'required_count': 8},
+    {'name': 'Page Turner', 'name_ms': 'Pembaca Hebat', 'description': 'Read 15 storybooks!', 'emoji': '🔖', 'requirement': 'stories', 'required_count': 15},
+
+    // Worksheets
+    {'name': 'Sheet Starter', 'name_ms': 'Mula Berlatih', 'description': 'Finish 3 worksheets!', 'emoji': '📝', 'requirement': 'worksheets', 'required_count': 3},
+    {'name': 'Super Learner', 'name_ms': 'Pelajar Super', 'description': 'Complete 10 worksheets!', 'emoji': '🎓', 'requirement': 'worksheets', 'required_count': 10},
+
+    // Streak — the habit itself is worth celebrating.
+    {'name': 'Streak Starter', 'name_ms': 'Mula Berturut', 'description': 'Play 3 days in a row!', 'emoji': '🔥', 'requirement': 'streak', 'required_count': 3},
+    {'name': 'Week Warrior', 'name_ms': 'Pahlawan Minggu', 'description': 'Play 7 days in a row!', 'emoji': '🗓️', 'requirement': 'streak', 'required_count': 7},
+    {'name': 'Two Week Hero', 'name_ms': 'Hero Dua Minggu', 'description': 'Play 14 days in a row!', 'emoji': '🚀', 'requirement': 'streak', 'required_count': 14},
+    {'name': 'Month Master', 'name_ms': 'Sifu Sebulan', 'description': 'Play 30 days in a row!', 'emoji': '🌟', 'requirement': 'streak', 'required_count': 30},
+
+    // Games
+    {'name': 'Number Ninja', 'name_ms': 'Ninja Nombor', 'description': 'Reach level 5 in Math Blast!', 'emoji': '➕', 'requirement': 'math_level', 'required_count': 5},
+    {'name': 'Math Wizard', 'name_ms': 'Ahli Sihir Matematik', 'description': 'Reach level 10 in Math Blast!', 'emoji': '🧙', 'requirement': 'math_level', 'required_count': 10},
+    {'name': 'Word Wizard', 'name_ms': 'Ahli Sihir Kata', 'description': 'Reach level 5 in Word Builder!', 'emoji': '🔤', 'requirement': 'word_level', 'required_count': 5},
+    {'name': 'Spelling Star', 'name_ms': 'Bintang Ejaan', 'description': 'Reach level 10 in Word Builder!', 'emoji': '✏️', 'requirement': 'word_level', 'required_count': 10},
+    {'name': 'Memory Maker', 'name_ms': 'Pengingat Hebat', 'description': 'Earn 15 stars in Memory Match!', 'emoji': '🃏', 'requirement': 'memory_stars', 'required_count': 15},
+    {'name': 'Mind Palace', 'name_ms': 'Istana Minda', 'description': 'Earn 45 stars in Memory Match!', 'emoji': '🧩', 'requirement': 'memory_stars', 'required_count': 45},
+    {'name': 'Game On', 'name_ms': 'Mula Bermain', 'description': 'Clear 10 game levels!', 'emoji': '🎮', 'requirement': 'game_levels', 'required_count': 10},
+    {'name': 'Level Crusher', 'name_ms': 'Penakluk Tahap', 'description': 'Clear 30 game levels!', 'emoji': '🏅', 'requirement': 'game_levels', 'required_count': 30},
+
+    // Creative
+    {'name': 'Little Artist', 'name_ms': 'Artis Kecil', 'description': 'Finish 5 creative activities!', 'emoji': '🎨', 'requirement': 'creative', 'required_count': 5},
+    {'name': 'Creative Soul', 'name_ms': 'Jiwa Seni', 'description': 'Finish 20 creative activities!', 'emoji': '🖌️', 'requirement': 'creative', 'required_count': 20},
+
+    // Economy
+    {'name': 'Star Collector', 'name_ms': 'Pengumpul Bintang', 'description': 'Collect 100 stars!', 'emoji': '✨', 'requirement': 'stars', 'required_count': 100},
+    {'name': 'Star Hoarder', 'name_ms': 'Raja Bintang', 'description': 'Collect 500 stars!', 'emoji': '💫', 'requirement': 'stars', 'required_count': 500},
+    {'name': 'Shopper', 'name_ms': 'Pembeli Bijak', 'description': 'Unlock your first item!', 'emoji': '🛍️', 'requirement': 'unlocks', 'required_count': 1},
+    {'name': 'Style Icon', 'name_ms': 'Ikon Gaya', 'description': 'Unlock 5 items!', 'emoji': '🎩', 'requirement': 'unlocks', 'required_count': 5},
+
+    // Daily challenge
+    {'name': 'Daily Dose', 'name_ms': 'Cabaran Harian', 'description': 'Finish 5 daily challenges!', 'emoji': '☀️', 'requirement': 'daily', 'required_count': 5},
+    {'name': 'Challenge King', 'name_ms': 'Raja Cabaran', 'description': 'Finish 20 daily challenges!', 'emoji': '🎯', 'requirement': 'daily', 'required_count': 20},
+  ];
+
+  /// Inserts every catalogue badge this database is missing.
+  ///
+  /// Matched by name so it never duplicates a badge, and so an install created
+  /// before a badge existed still picks it up on upgrade.
+  Future<void> _seedBadges(Database db) async {
+    final existing = (await db.query('badges', columns: ['name']))
+        .map((r) => r['name'] as String)
+        .toSet();
+    for (final badge in _badgeCatalog) {
+      if (existing.contains(badge['name'])) continue;
+      await db.insert('badges', {...badge, 'is_earned': 0});
+    }
   }
 }

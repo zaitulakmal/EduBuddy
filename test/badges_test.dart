@@ -14,7 +14,7 @@ DatabaseHelper get _db => DatabaseHelper();
 Future<void> _freshDatabase() async {
   await _db.close();
   final dir = await databaseFactory.getDatabasesPath();
-  await databaseFactory.deleteDatabase('$dir/edubuddy.db');
+  await databaseFactory.deleteDatabase('$dir/${DatabaseHelper.databaseName}');
 }
 
 Future<void> _setProfile({
@@ -39,6 +39,9 @@ void main() {
   setUpAll(() {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    // Own file: test files run in parallel isolates and would otherwise fight
+    // over one database.
+    DatabaseHelper.databaseName = 'edubuddy_badges_test.db';
   });
 
   setUp(_freshDatabase);

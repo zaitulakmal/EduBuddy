@@ -5,7 +5,9 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/worksheet_model.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/buddy_mascot.dart';
 import '../../widgets/page_theme.dart';
+import '../../widgets/reward_overlay.dart';
 
 class WorksheetsScreen extends StatefulWidget {
   const WorksheetsScreen({super.key});
@@ -15,6 +17,27 @@ class WorksheetsScreen extends StatefulWidget {
 }
 
 class _WorksheetsScreenState extends State<WorksheetsScreen> {
+  /// Marks a worksheet done, then celebrates any badge it earned.
+  Future<void> _markDone(
+      BuildContext context, AppProvider provider, int id) async {
+    try {
+      await provider.markWorksheetDone(id);
+    } catch (_) {
+      return;
+    }
+    final badges = List.of(provider.newlyEarnedBadges);
+    if (!mounted || badges.isEmpty) return;
+    if (!context.mounted) return;
+    await showRewardSheet(
+      context,
+      title: provider.t('New badge!', 'Lencana baharu!'),
+      badges: badges,
+      buddy: buddyVariantFromId(provider.userAvatar),
+      hat: provider.buddyHat,
+      accessory: provider.buddyAccessory,
+    );
+  }
+
   String _selectedGrade = 'All';
 
   final List<String> _grades = ['All', 'Pre-school', 'Year 1', 'Year 2', 'Year 3'];
@@ -177,7 +200,7 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
                     child: _WorksheetCard(
                       worksheet: worksheets[i],
                       onMarkDone: () =>
-                          provider.markWorksheetDone(worksheets[i].id!),
+                          _markDone(context, provider, worksheets[i].id!),
                     ),
                   ),
                 ),

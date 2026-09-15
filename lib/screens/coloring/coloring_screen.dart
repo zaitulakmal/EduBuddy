@@ -4,7 +4,10 @@ import 'package:confetti/confetti.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/buddy_mascot.dart';
 import '../../widgets/page_theme.dart';
+import 'package:provider/provider.dart';
+import '../../providers/app_provider.dart';
 import '../../services/sound_service.dart';
+import '../../widgets/reward_overlay.dart';
 
 // Each coloring page is a list of regions. Regions start WHITE (real coloring
 // book style) with a small "suggested colour" hint dot; kids tap to fill.
@@ -720,6 +723,10 @@ class _ColoringScreenState extends State<ColoringScreen>
     }
   }
 
+  /// Pages already paid for, so re-tapping a finished picture cannot farm
+  /// stars while colouring a second picture still counts.
+  final Set<int> _awardedPages = {};
+
   void _checkDone() {
     final page = _pages[_pageIndex];
     final regions = page.regionBuilder(_canvasSize);
@@ -728,10 +735,31 @@ class _ColoringScreenState extends State<ColoringScreen>
       setState(() => _celebrating = true);
       SoundService.instance.complete();
       _confettiController.play();
+      _awardPage(_pageIndex);
       Future.delayed(const Duration(seconds: 4), () {
         if (mounted) setState(() => _celebrating = false);
       });
     }
+  }
+
+  /// Pays for a finished picture. Colouring earned nothing at all before, so
+  /// one of the most-played parts of the app fed neither stars nor badges.
+  Future<void> _awardPage(int index) async {
+    if (!_awardedPages.add(index)) return;
+    final provider = context.read<AppProvider>();
+    try {
+      await provider.markCreativeDone('coloring', label: _pages[index].title);
+    } catch (_) {
+      return;
+    }
+    final badges = List.of(provider.newlyEarnedBadges);
+    if (!mounted || badges.isEmpty) return;
+    // The page has its own confetti, so only interrupt for a badge.
+    await showRewardSheet(
+      context,
+      title: provider.t('New badge!', 'Lencana baharu!'),
+      badges: badges,
+    );
   }
 
   @override

@@ -17,6 +17,12 @@ import '../counting/counting_screen.dart';
 import '../games/math_blast_screen.dart';
 import '../games/memory_match_screen.dart';
 import '../games/word_builder_screen.dart';
+import '../games/buddy_reader_screen.dart';
+import '../games/sentence_screen.dart';
+import '../journey/journey_screen.dart';
+import '../shop/shop_screen.dart';
+import '../../widgets/reward_overlay.dart';
+import '../../widgets/streak_chip.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -39,6 +45,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _floatOffset = Tween<double>(begin: -6, end: 6).animate(
       CurvedAnimation(parent: _floatAnim, curve: Curves.easeInOut),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _celebrateStreak());
+  }
+
+  /// Shows the streak celebration for a new day, exactly once.
+  ///
+  /// The streak is recorded during load, before Home is built, so the event is
+  /// held on the provider and consumed here rather than fired from the loader.
+  Future<void> _celebrateStreak() async {
+    if (!mounted) return;
+    final provider = context.read<AppProvider>();
+    final event = provider.consumeStreakEvent();
+    if (event == null) return;
+    // Let the route transition from the splash finish first, so the
+    // celebration lands on a settled Home rather than mid-slide.
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+    final t = provider.t;
+    await showRewardSheet(
+      context,
+      title: event.freezeUsed
+          ? t('Streak saved!', 'Streak diselamatkan!')
+          : t('Day ${event.current}!', 'Hari ke-${event.current}!'),
+      subtitle: event.freezesEarned > 0
+          ? t('You earned a streak freeze.', 'Kau dapat perisai streak.')
+          : null,
+      streak: event,
+      buddy: buddyVariantFromId(provider.userAvatar),
+      hat: provider.buddyHat,
+      accessory: provider.buddyAccessory,
+    );
   }
 
   @override
@@ -53,11 +89,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: provider.themeSkin.background,
           body: CustomScrollView(
             slivers: [
               _buildHeader(context, provider),
               _buildStatsRow(context, provider),
+              // The daily challenge sits directly under the header: it is the
+              // one thing that changes every day, so it earns the top slot.
+              _buildSectionTitle(context, provider.t("Today's Challenge", 'Cabaran Hari Ini'),
+                  provider.t('New every day!', 'Baharu setiap hari!')),
+              _buildDailyChallenge(context, provider),
+              _buildJourneyBanner(context, provider),
               _buildSectionTitle(context, provider.t('Quick Start', 'Mula Cepat'),
                   provider.t('Jump right in!', 'Terus mula!')),
               _buildQuickStartGrid(context, provider),
@@ -71,9 +113,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   provider.t('Writing Practice', 'Latihan Menulis'),
                   provider.t('Trace letters & numbers!', 'Surih huruf & nombor!')),
               _buildTracingBanner(context, provider),
-              _buildSectionTitle(context, provider.t("Today's Challenge", 'Cabaran Hari Ini'),
-                  provider.t('Try something new!', 'Cuba sesuatu yang baru!')),
-              _buildDailyChallenge(context, provider),
               _buildSectionTitle(context, provider.t('Recent Activity', 'Aktiviti Terkini'),
                   provider.t('Keep it up!', 'Teruskan!')),
               _buildRecentActivity(context, provider),
@@ -91,11 +130,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return SliverToBoxAdapter(
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.primary,
+          gradient: LinearGradient(
+            colors: provider.themeSkin.headerGradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: const BorderRadius.vertical(bottom: Radius.circular(36)),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.25),
+              color: provider.themeSkin.headerGradient.last
+                  .withValues(alpha: 0.25),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -112,11 +156,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   animation: _floatAnim,
                   builder: (_, _) => Transform.translate(
                     offset: Offset(0, _floatOffset.value * 0.5),
-                    child: const BuddyMascot(
+                    child: BuddyMascot(
                       size: 72,
                       waving: true,
                       // Same reason as the splash: the header is that yellow.
-                      antennaColor: Color(0xFF23348C),
+                      antennaColor: const Color(0xFF23348C),
+                      variant: buddyVariantFromId(provider.userAvatar),
+                      hat: provider.buddyHat,
+                      accessory: provider.buddyAccessory,
+                      // Buddy visibly reacts to how long the child has been
+                      // away — the companion is the pull that brings them back.
+                      mood: provider.buddyMood,
                     ),
                   ),
                 ),
@@ -135,16 +185,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ),
                       Text(
-                        provider.t('Ready to learn today?', 'Sedia belajar hari ini?'),
+                        provider.buddyGreeting,
                         style: const TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      StreakChip(
+                        days: provider.streakDays,
+                        freezes: provider.streakFreezes,
                       ),
                     ],
                   ),
                 ),
                 BouncyButton(
-                  onTap: () => SoundService.instance.speakBilingual(
-                    'Hello! Let\'s learn something fun today!',
-                    'Hai! Mari belajar sesuatu yang seronok hari ini!',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ShopScreen()),
                   ),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -152,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       color: Colors.white.withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: StarDisplay(stars: provider.totalStars, color: Colors.white, size: 20),
+                    child: StarDisplay(stars: provider.spendableStars, color: Colors.white, size: 20),
                   ),
                 ),
               ],
@@ -212,6 +266,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           AppColors.gradients[2], Icons.abc_rounded,
           () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const WordBuilderScreen()))),
+      _QuickItem(provider.t('Buddy Reader', 'Buddy Membaca'),
+          provider.t('Drag letters, read words!', 'Seret huruf, baca perkataan!'),
+          AppColors.gradients[4], Icons.auto_stories_rounded,
+          () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const BuddyReaderScreen()))),
+      _QuickItem(provider.t('Sentences', 'Bina Ayat'),
+          provider.t('Build, fill & match!', 'Susun, isi & padan!'),
+          AppColors.gradients[3], Icons.chat_bubble_rounded,
+          () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const SentenceScreen()))),
       _QuickItem(provider.t('Math Blast', 'Kira Cepat'),
           provider.t('3 + 2 = ?', '3 + 2 = ?'),
           AppColors.gradients[5], Icons.calculate_rounded,
@@ -367,55 +431,117 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // ── Daily challenge ───────────────────────────────────────────────────────
 
+  /// Today's challenge.
+  ///
+  /// This used to be a label on the first unfinished quiz, which never changed
+  /// at midnight, never finished, and paid nothing. It is now a real daily:
+  /// chosen from the calendar date, the same all day, reset at local midnight,
+  /// and worth stars when completed — which is the whole reason to come back
+  /// tomorrow rather than today.
   Widget _buildDailyChallenge(BuildContext context, AppProvider provider) {
-    if (provider.quizzes.isEmpty) return const SliverToBoxAdapter(child: SizedBox());
-    final quiz = provider.quizzes.firstWhere((q) => !q.isCompleted, orElse: () => provider.quizzes.first);
+    final challenge = provider.dailyChallenge;
+    if (challenge == null) return const SliverToBoxAdapter(child: SizedBox());
+
+    final (emoji, en, ms) = _challengeLabel(challenge.kind);
+    final claimable = challenge.isClaimable;
+    final done = challenge.isComplete;
+
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: BouncyButton(
-          onTap: () => _navigate(context, 2),
+          onTap: () => _onChallengeTap(context, provider),
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFF667EEA),
+              color: claimable ? AppColors.success : const Color(0xFF667EEA),
               borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: const Color(0xFF667EEA).withValues(alpha: 0.4), blurRadius: 16, offset: const Offset(0, 6))],
+              boxShadow: [
+                BoxShadow(
+                  color: (claimable ? AppColors.success : const Color(0xFF667EEA))
+                      .withValues(alpha: 0.4),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
             child: Row(
               children: [
                 Container(
-                  width: 64, height: 64,
+                  width: 64,
+                  height: 64,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Center(child: Icon(Icons.psychology_rounded, color: Colors.white, size: 34)),
+                  child: Center(
+                    child: Text(emoji, style: const TextStyle(fontSize: 32)),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(provider.t("Today's Quiz", 'Kuiz Hari Ini'),
-                          style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w700)),
+                      Text(
+                        provider.t("Today's Challenge", 'Cabaran Hari Ini'),
+                        style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700),
+                      ),
                       const SizedBox(height: 2),
-                      Text(quiz.title,
-                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 4),
+                      Text(
+                        provider.t(en, ms),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(5),
+                        child: LinearProgressIndicator(
+                          value: challenge.fraction,
+                          minHeight: 7,
+                          backgroundColor: Colors.white24,
+                          valueColor:
+                              const AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
                       Row(children: [
-                        _badge(provider.t('5 Questions', '5 Soalan'), Colors.white24),
+                        _badge(
+                          '${challenge.progress}/${challenge.targetCount}',
+                          Colors.white24,
+                        ),
                         const SizedBox(width: 6),
-                        if (quiz.highScore > 0)
-                          _badge(provider.t('Best: ${quiz.highScore}', 'Terbaik: ${quiz.highScore}'), Colors.white24),
+                        _badge(
+                          claimable
+                              ? provider.t('Tap to claim!', 'Tap untuk tuntut!')
+                              : (done
+                                  ? provider.t('Done today', 'Selesai hari ini')
+                                  : '+${challenge.reward} ⭐'),
+                          Colors.white24,
+                        ),
                       ]),
                     ],
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
+                  decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle),
+                  child: Icon(
+                    claimable
+                        ? Icons.card_giftcard_rounded
+                        : (done
+                            ? Icons.check_rounded
+                            : Icons.play_arrow_rounded),
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
               ],
             ),
@@ -423,6 +549,135 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
     );
+  }
+
+  /// Entry point to the winding path.
+  ///
+  /// A grid shows a child everything that exists; the path shows them what is
+  /// *next*, which is what actually pulls someone forward.
+  Widget _buildJourneyBanner(BuildContext context, AppProvider provider) {
+    final done = provider.quizzesCompleted +
+        provider.storiesRead +
+        provider.worksheetsDone +
+        provider.creativeDone +
+        (provider.badgeProgress['game_levels'] ?? 0);
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+        child: BouncyButton(
+          onTap: () {
+            SoundService.instance.tap();
+            Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const JourneyScreen()));
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                BuddyMascot(
+                  size: 46,
+                  variant: buddyVariantFromId(provider.userAvatar),
+                  hat: provider.buddyHat,
+                  accessory: provider.buddyAccessory,
+                  animation: BuddyAnim.hop,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        provider.t('My Journey', 'Perjalanan Saya'),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      Text(
+                        provider.t('$done stops done — see what is next',
+                            '$done hentian selesai — lihat yang seterusnya'),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    color: AppColors.textMuted),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static (String, String, String) _challengeLabel(String kind) =>
+      switch (kind) {
+        'quiz' => ('🧠', 'Finish a quiz', 'Habiskan satu kuiz'),
+        'story' => ('📚', 'Read a story', 'Baca satu cerita'),
+        'worksheet' => ('📝', 'Do a worksheet', 'Buat satu lembaran'),
+        'math' => ('➕', 'Clear 2 Math Blast levels', 'Habiskan 2 tahap Math Blast'),
+        'word' => ('🔤', 'Clear 2 Word Builder levels', 'Habiskan 2 tahap Bina Perkataan'),
+        'memory' => ('🃏', 'Clear a Memory Match level', 'Habiskan satu tahap Padanan'),
+        'creative' => ('🎨', 'Make something', 'Cipta sesuatu'),
+        _ => ('⭐', 'Play something', 'Main sesuatu'),
+      };
+
+  /// Claims the reward when it is ready, and otherwise takes the child
+  /// straight to the activity the challenge is asking for.
+  Future<void> _onChallengeTap(
+      BuildContext context, AppProvider provider) async {
+    final challenge = provider.dailyChallenge;
+    if (challenge == null) return;
+
+    if (challenge.isClaimable) {
+      final stars = await provider.claimDailyChallenge();
+      if (!context.mounted || stars <= 0) return;
+      final badges = List.of(provider.newlyEarnedBadges);
+      await showRewardSheet(
+        context,
+        title: provider.t('Challenge complete!', 'Cabaran selesai!'),
+        subtitle: provider.t(
+            'Come back tomorrow for a new one.', 'Datang esok untuk yang baharu.'),
+        stars: stars,
+        badges: badges,
+        buddy: buddyVariantFromId(provider.userAvatar),
+        hat: provider.buddyHat,
+        accessory: provider.buddyAccessory,
+      );
+      return;
+    }
+
+    SoundService.instance.tap();
+    final screen = switch (challenge.kind) {
+      'quiz' => const QuizzesScreen(),
+      'story' => const StorybooksScreen(),
+      'worksheet' => const WorksheetsScreen(),
+      'math' => const MathBlastScreen(),
+      'word' => const WordBuilderScreen(),
+      'memory' => const MemoryMatchScreen(),
+      _ => const ColoringScreen(),
+    };
+    if (!context.mounted) return;
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => screen));
   }
 
   Widget _badge(String text, Color bg) {

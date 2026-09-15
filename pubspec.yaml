@@ -1,7 +1,7 @@
 name: edubuddy
 description: "EduBuddy - Interactive Learning App for Kids"
 publish_to: 'none'
-version: 1.0.4+5
+version: 1.0.5+6
 
 environment:
   sdk: ^3.11.1
@@ -35,6 +35,10 @@ dependencies:
   chewie: ^1.8.5
   audioplayers: ^6.1.0
   cached_network_image: ^3.4.1
+
+  # Notifications — one gentle daily reminder, set up by a parent.
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.10.0
 
   # Storage & Utils
   shared_preferences: ^2.3.2

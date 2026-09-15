@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
+import '../../models/story_library.dart';
+import '../../models/story_sounds.dart';
 import '../../models/storybook_model.dart';
 import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../widgets/reward_overlay.dart';
 import '../../widgets/story_scene.dart';
 import '../../services/sound_service.dart';
 
@@ -38,18 +42,20 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
         await widget.provider.loadStorybookPages(widget.book.id!);
     if (!mounted) return;
     setState(() => _pages = pages);
-    _speakCurrentPage();
+    _syncAmbient();
   }
 
-  void _speakCurrentPage() {
-    if (_currentPage >= _pages.length) return;
-    final page = _pages[_currentPage];
-    SoundService.instance.speak(page.text, page.textMs);
+  /// Library books play a looping scene sound that follows the page.
+  void _syncAmbient() {
+    final seed = storySeedFor(widget.book.storyKey);
+    if (seed == null || seed.pages.isEmpty) return;
+    final shot = seed.pages[_currentPage.clamp(0, seed.pages.length - 1)].shot;
+    SoundService.instance.playAmbient(storyAmbientFor(shot), rain: shot.rain);
   }
 
   @override
   void dispose() {
-    SoundService.instance.stopSpeaking();
+    if (widget.book.storyKey != null) SoundService.instance.stopAmbient();
     _pageCtrl.dispose();
     super.dispose();
   }
@@ -60,13 +66,33 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
           duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
       if (mounted) {
         setState(() => _currentPage++);
-        _speakCurrentPage();
       }
     } else if (!_finished) {
       setState(() => _finished = true);
-      widget.provider.markStorybookRead(widget.book.id!);
+      _recordRead();
       _showCompletionDialog();
     }
+  }
+
+  /// Records the finished book, then celebrates any badge it earned. The
+  /// completion dialog is its own celebration, so only a badge interrupts it.
+  Future<void> _recordRead() async {
+    final provider = widget.provider;
+    try {
+      await provider.markStorybookRead(widget.book.id!);
+    } catch (_) {
+      return;
+    }
+    final badges = List.of(provider.newlyEarnedBadges);
+    if (!mounted || badges.isEmpty) return;
+    await showRewardSheet(
+      context,
+      title: provider.t('New badge!', 'Lencana baharu!'),
+      badges: badges,
+      buddy: buddyVariantFromId(provider.userAvatar),
+      hat: provider.buddyHat,
+      accessory: provider.buddyAccessory,
+    );
   }
 
   void _previousPage() {
@@ -75,7 +101,6 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
           duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
       if (mounted) {
         setState(() => _currentPage--);
-        _speakCurrentPage();
       }
     }
   }
@@ -196,19 +221,6 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  BouncyButton(
-                    onTap: _speakCurrentPage,
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white12,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(Icons.volume_up_rounded,
-                          color: Colors.white, size: 20),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -217,11 +229,15 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
             Expanded(
               child: PageView.builder(
                 controller: _pageCtrl,
-                onPageChanged: (i) => setState(() => _currentPage = i),
+                onPageChanged: (i) {
+                  setState(() => _currentPage = i);
+                  _syncAmbient();
+                },
                 itemCount: _pages.length,
                 itemBuilder: (_, i) => _StoryPage(
                   page: _pages[i],
                   storybookId: widget.book.id!,
+                  storyKey: widget.book.storyKey,
                 ),
               ),
             ),
@@ -317,8 +333,9 @@ class _StoryReaderScreenState extends State<StoryReaderScreen> {
 class _StoryPage extends StatelessWidget {
   final StorybookPage page;
   final int storybookId;
+  final String? storyKey;
 
-  const _StoryPage({required this.page, required this.storybookId});
+  const _StoryPage({required this.page, required this.storybookId, this.storyKey});
 
   @override
   Widget build(BuildContext context) {
@@ -333,6 +350,7 @@ class _StoryPage extends StatelessWidget {
               child: StorySceneWidget(
                 storybookId: storybookId,
                 pageNumber: page.pageNumber,
+                storyKey: storyKey,
               ),
             ),
             // Story text overlay at the bottom

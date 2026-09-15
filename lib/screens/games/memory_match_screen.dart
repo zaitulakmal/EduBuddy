@@ -3,9 +3,16 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:confetti/confetti.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../db/database_helper.dart';
+import '../../models/badge_model.dart';
+import '../../models/progression.dart';
+import '../../providers/app_provider.dart';
 import '../../widgets/animal_illustrations.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../widgets/reward_overlay.dart';
 import '../../services/ad_helper.dart';
 import '../../services/sound_service.dart';
 
@@ -92,23 +99,46 @@ List<_Level> _buildLevels(int deckCount) {
 
 // ─── Progress persistence ──────────────────────────────────────────────────────
 
+/// Per-level stars for Memory Match.
+///
+/// These used to live only in SharedPreferences, which meant the game's
+/// progress was invisible to badges, the star economy and the parent report.
+/// They now live in the database alongside the other games; anything found
+/// under the old key is migrated across once, then read from the database.
+///
+/// Level indexes are 0-based on screen and 1-based in storage, matching the
+/// other games.
 class _Progress {
   static const _kStars = 'mm_stars_v2_';
+  static const gameKey = 'memory';
 
   static Future<Map<int, int>> load(int count) async {
-    final prefs = await SharedPreferences.getInstance();
-    final map = <int, int>{};
-    for (int i = 0; i < count; i++) {
-      final s = prefs.getInt('$_kStars$i');
-      if (s != null && s > 0) map[i] = s;
+    final db = DatabaseHelper();
+    var ratings = (await db.gameStats(gameKey)).ratings;
+    if (ratings.isEmpty && await _migrateFromPrefs(db, count)) {
+      ratings = (await db.gameStats(gameKey)).ratings;
     }
-    return map;
+    return {
+      for (final e in ratings.entries)
+        if (e.value > 0 && e.key >= 1) e.key - 1: e.value,
+    };
   }
 
-  static Future<void> saveStars(int level, int stars) async {
+  /// Moves pre-database progress over, once. Ratings are kept so the level map
+  /// and badges are right; no stars are paid, because back-paying every level
+  /// a long-time player ever cleared would hand them the whole shop on the day
+  /// they upgrade.
+  static Future<bool> _migrateFromPrefs(DatabaseHelper db, int count) async {
     final prefs = await SharedPreferences.getInstance();
-    final cur = prefs.getInt('$_kStars$level') ?? 0;
-    if (stars > cur) await prefs.setInt('$_kStars$level', stars);
+    var moved = false;
+    for (int i = 0; i < count; i++) {
+      final stars = prefs.getInt('$_kStars$i');
+      if (stars == null || stars <= 0) continue;
+      await db.importClearedLevel(
+          gameKey: gameKey, level: i + 1, rating: stars);
+      moved = true;
+    }
+    return moved;
   }
 }
 
@@ -488,7 +518,41 @@ class _MemoryGameScreenState extends State<_MemoryGameScreen>
     });
     SoundService.instance.win();
     _confetti.play();
-    await _Progress.saveStars(_index, stars);
+
+    final provider = context.read<AppProvider>();
+    GameReward? reward;
+    var newBadges = <BadgeModel>[];
+    try {
+      // Three stars means a near-flawless board, which is this game's
+      // equivalent of finishing without losing a life.
+      reward = await provider.recordGameLevel(
+        gameKey: _Progress.gameKey,
+        level: _index + 1,
+        rating: stars,
+        perfect: stars >= 3,
+        score: _moves,
+      );
+      newBadges = List.of(provider.newlyEarnedBadges);
+    } catch (_) {
+      // A storage failure must not swallow the win screen.
+    }
+
+    if (!mounted) return;
+    if ((reward?.paid ?? false) || newBadges.isNotEmpty) {
+      final t = provider.t;
+      await showRewardSheet(
+        context,
+        title: t('Level ${_index + 1} cleared!', 'Tahap ${_index + 1} selesai!'),
+        subtitle: (reward?.perfectStars ?? 0) > 0
+            ? t('Three stars — brilliant!', 'Tiga bintang — hebat!')
+            : null,
+        stars: reward?.total ?? 0,
+        badges: newBadges,
+        buddy: buddyVariantFromId(provider.userAvatar),
+        hat: provider.buddyHat,
+        accessory: provider.buddyAccessory,
+      );
+    }
   }
 
   bool get _hasNext => _index + 1 < widget.levels.length;

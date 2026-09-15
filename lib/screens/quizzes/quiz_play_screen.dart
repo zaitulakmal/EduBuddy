@@ -9,6 +9,8 @@ import '../../widgets/subject_illustrations.dart';
 import '../../widgets/buddy_mascot.dart';
 import '../../widgets/illustrations.dart';
 import '../../widgets/page_theme.dart';
+import '../../widgets/reward_overlay.dart';
+import '../../widgets/score_monster.dart';
 import '../../services/sound_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -104,14 +106,6 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
     setState(() => _questions = qs);
     _cardCtrl.forward();
     _timerCtrl.forward(from: 0);
-    _speakQuestion();
-  }
-
-  // Reads the current question aloud (in the active UI language).
-  void _speakQuestion() {
-    if (_currentIndex >= _questions.length) return;
-    final q = _questions[_currentIndex];
-    SoundService.instance.speak(q.question, q.questionMs);
   }
 
   void _onTimerDone(AnimationStatus status) {
@@ -121,14 +115,12 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
       SoundService.instance.wrong();
       _shakeCtrl.forward(from: 0);
       _monsterBounce.forward(from: 0);
-      SoundService.instance.speakBilingual("Time's up!", 'Masa tamat!');
       Future.delayed(const Duration(milliseconds: 1800), () { if (mounted) _next(); });
     }
   }
 
   @override
   void dispose() {
-    SoundService.instance.stopSpeaking();
     _cardCtrl.dispose(); _shakeCtrl.dispose(); _timerCtrl.dispose();
     _scorePopCtrl.dispose(); _monsterBounce.dispose(); _floatCtrl.dispose();
     _confettiCtrl.dispose();
@@ -152,16 +144,12 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
       }
     });
     _monsterBounce.forward(from: 0);
-    final q = _questions[_currentIndex];
     if (correct) {
       SoundService.instance.correct();
-      SoundService.instance.speakVerdict(true);
       _confettiCtrl.play();
       _scorePopCtrl.forward(from: 0);
     } else {
       SoundService.instance.wrong();
-      SoundService.instance.speakVerdict(false,
-          correctAnswer: q.options[q.correctIndex], ms: q.optionsMs[q.correctIndex]);
       _shakeCtrl.forward(from: 0);
     }
     Future.delayed(const Duration(milliseconds: 1900), () { if (mounted) _next(); });
@@ -178,14 +166,35 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
       });
       _cardCtrl.forward(from: 0);
       _timerCtrl.forward(from: 0);
-      _speakQuestion();
     } else {
       _timerCtrl.stop();
-      widget.provider.saveQuizScore(widget.quiz.id!, _score);
       setState(() => _quizDone = true);
       SoundService.instance.win();
       _confettiCtrl.play();
+      _recordScore();
     }
+  }
+
+  /// Saves the score, then celebrates any badge it earned on top of the
+  /// results screen. The results screen is its own celebration, so a badge is
+  /// the only thing worth interrupting it for.
+  Future<void> _recordScore() async {
+    final provider = widget.provider;
+    try {
+      await provider.saveQuizScore(widget.quiz.id!, _score);
+    } catch (_) {
+      return;
+    }
+    final badges = List.of(provider.newlyEarnedBadges);
+    if (!mounted || badges.isEmpty) return;
+    await showRewardSheet(
+      context,
+      title: provider.t('New badge!', 'Lencana baharu!'),
+      badges: badges,
+      buddy: buddyVariantFromId(provider.userAvatar),
+      hat: provider.buddyHat,
+      accessory: provider.buddyAccessory,
+    );
   }
 
   @override
@@ -641,10 +650,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
                     ),
                     const SizedBox(height: 8),
                     // Score monster (orange one-eyed)
-                    SizedBox(
-                      width: 80, height: 80,
-                      child: CustomPaint(painter: _ScoreMonsterPainter()),
-                    ),
+                    const ScoreMonster(size: 80),
                     const SizedBox(height: 6),
                     Text(
                       '$_score/$total',
@@ -669,33 +675,6 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
                     style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                 ),
-              const SizedBox(height: 10),
-              // Tap to hear the result read aloud again.
-              BouncyButton(
-                onTap: () {
-                  final pct = (_score / total * 100).round();
-                  SoundService.instance.speakBilingual(
-                    'You scored $_score out of $total. That is $pct percent!',
-                    'Anda dapat $_score daripada $total. Iaitu $pct peratus!',
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.22),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.volume_up_rounded, color: Colors.white, size: 18),
-                      SizedBox(width: 6),
-                      Text('Read it to me', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
-                    ],
-                  ),
-                ),
-              ),
               const Spacer(),
               // Buttons
               Padding(
@@ -986,55 +965,3 @@ class _QuestionGraphic extends StatelessWidget {
   }
 }
 
-// ─── Score screen monster (orange one-eyed winged) ────────────────────────────
-
-class _ScoreMonsterPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2, cy = size.height * 0.52;
-    final r = size.shortestSide * 0.42;
-
-    // Wings
-    final wingPaint = Paint()..color = const Color(0xFFFF9955);
-    final leftWing = Path()
-      ..moveTo(cx - r * 0.6, cy)
-      ..cubicTo(cx - r * 1.6, cy - r * 0.5, cx - r * 1.5, cy + r * 0.5, cx - r * 0.6, cy + r * 0.3)
-      ..close();
-    final rightWing = Path()
-      ..moveTo(cx + r * 0.6, cy)
-      ..cubicTo(cx + r * 1.6, cy - r * 0.5, cx + r * 1.5, cy + r * 0.5, cx + r * 0.6, cy + r * 0.3)
-      ..close();
-    canvas.drawPath(leftWing, wingPaint);
-    canvas.drawPath(rightWing, wingPaint);
-
-    // Body — orange
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: r * 1.6, height: r * 1.8),
-        Paint()..color = const Color(0xFFE8784A));
-
-    // Horn
-    final horn = Path()
-      ..moveTo(cx - r * 0.12, cy - r * 0.85)
-      ..lineTo(cx, cy - r * 1.2)
-      ..lineTo(cx + r * 0.12, cy - r * 0.85)
-      ..close();
-    canvas.drawPath(horn, Paint()..color = const Color(0xFFFF9955));
-
-    // Single eye
-    canvas.drawCircle(Offset(cx, cy - r * 0.1), r * 0.38, Paint()..color = Colors.white);
-    canvas.drawCircle(Offset(cx, cy - r * 0.1), r * 0.22, Paint()..color = const Color(0xFF222222));
-    canvas.drawCircle(Offset(cx + r * 0.08, cy - r * 0.18), r * 0.08, Paint()..color = Colors.white);
-
-    // Grinning mouth
-    final mp = Path()
-      ..moveTo(cx - r * 0.35, cy + r * 0.28)
-      ..quadraticBezierTo(cx, cy + r * 0.55, cx + r * 0.35, cy + r * 0.28);
-    canvas.drawPath(mp, Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round);
-
-    // Tiny legs
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx - r * 0.25, cy + r * 0.94), width: r * 0.28, height: r * 0.2), Paint()..color = const Color(0xFFE8784A));
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx + r * 0.25, cy + r * 0.94), width: r * 0.28, height: r * 0.2), Paint()..color = const Color(0xFFE8784A));
-  }
-
-  @override
-  bool shouldRepaint(_ScoreMonsterPainter _) => false;
-}
