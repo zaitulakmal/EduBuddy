@@ -8,6 +8,7 @@ import 'games/word_builder_screen.dart';
 import 'quizzes/quizzes_screen.dart';
 import 'storybooks/storybooks_screen.dart';
 import 'profile/profile_screen.dart';
+import '../sketch/sketch_tab_screen.dart';
 
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
@@ -30,6 +31,7 @@ class _MainNavState extends State<MainNav> {
     WordBuilderScreen(),
     QuizzesScreen(),
     StorybooksScreen(),
+    SketchTabScreen(),
     ProfileScreen(),
   ];
 
@@ -87,6 +89,7 @@ class _MainNavState extends State<MainNav> {
       ('🔤', t('Spelling', 'Ejaan')),
       ('🧩', t('Quizzes', 'Kuiz')),
       ('📖', t('Stories', 'Cerita')),
+      ('✏️', t('Draw', 'Lukis')),
       ('👤', t('Profile', 'Profil')),
     ];
 
