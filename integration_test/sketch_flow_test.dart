@@ -46,7 +46,16 @@ void main() {
   testWidgets('draw a lesson, save it, and continue a draft', (t) async {
     app.main();
     await wait(t, 4000); // splash
-    await t.tap(find.text('Draw'));
+    // The lessons now hang off the Drawing Studio card in Home's creative
+    // activities row, not a bottom tab, so scroll down to it first.
+    final studio = find.text('Drawing\nStudio');
+    await t.scrollUntilVisible(
+      studio,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await wait(t, 600);
+    await t.tap(studio);
     await wait(t, 1500);
     await binding.takeScreenshot('1-tab');
 

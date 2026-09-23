@@ -1,7 +1,7 @@
 name: edubuddy
 description: "EduBuddy - Interactive Learning App for Kids"
 publish_to: 'none'
-version: 1.0.1+2
+version: 1.0.5+6
 
 environment:
   sdk: ^3.11.1
@@ -36,6 +36,10 @@ dependencies:
   audioplayers: ^6.1.0
   cached_network_image: ^3.4.1
 
+  # Notifications — one gentle daily reminder, set up by a parent.
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.10.0
+
   # Storage & Utils
   shared_preferences: ^2.3.2
   intl: ^0.20.1
@@ -50,14 +54,16 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
+  sqflite_common_ffi: ^2.4.0+3
 
 flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icon/app_icon.png"
   min_sdk_android: 21
-  adaptive_icon_background: "#E8784A"
-  adaptive_icon_foreground: "assets/icon/app_icon.png"
+  remove_alpha_ios: true
+  adaptive_icon_background: "#FFC93C"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
 
 flutter:
   uses-material-design: true

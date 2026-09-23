@@ -1,14 +1,21 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
+import '../models/story_library.dart';
+import 'story_stage.dart';
+
 class StorySceneWidget extends StatefulWidget {
   final int storybookId;
   final int pageNumber;
+
+  /// Library books are drawn from their [StoryShot] rather than by row id.
+  final String? storyKey;
 
   const StorySceneWidget({
     super.key,
     required this.storybookId,
     required this.pageNumber,
+    this.storyKey,
   });
 
   @override
@@ -48,6 +55,13 @@ class _StorySceneWidgetState extends State<StorySceneWidget>
 
   @override
   Widget build(BuildContext context) {
+    final seed = storySeedFor(widget.storyKey);
+    if (seed != null && widget.pageNumber >= 1 && widget.pageNumber <= seed.pages.length) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: StoryStage(shot: seed.pages[widget.pageNumber - 1].shot),
+      );
+    }
     return AnimatedBuilder(
       animation: Listenable.merge([_slowAnim, _mediumAnim, _fastAnim]),
       builder: (_, _) {
@@ -608,10 +622,6 @@ void _drawBrightStar(Canvas c, Size s, Offset pos, double r, double t) {
     ..color = Colors.white.withValues(alpha: alpha * 0.3)
     ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 0.8);
   c.drawCircle(pos, r * 1.2, glowP);
-}
-
-void _drawSimpleStar(Canvas c, Size s, Offset pos, double r, double t) {
-  _draw5PointStar(c, pos, r, const Color(0xFFFFF9C4).withValues(alpha: 0.5 + t * 0.5));
 }
 
 void _drawSparkle(Canvas c, Size s, Offset pos, double r) {

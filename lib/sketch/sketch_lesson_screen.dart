@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'pencil.dart';
 import 'share_image.dart';
@@ -13,15 +14,19 @@ import 'sketch_painters.dart';
 import 'sketch_score.dart';
 import 'sketch_store.dart';
 import 'sketch_widgets.dart';
+import '../providers/app_provider.dart';
+import '../theme/app_theme.dart';
 
 // Port of SketchStep's LessonScreen: trace each step, shade, get scored.
 // Every change is saved as a draft so a lesson can be continued later.
 
-const _ink = Color(0xFF330D81);
-const _inkDeep = Color(0xFF240862);
-const _sun = Color(0xFFFFD220);
-const _sunEdge = Color(0xFFC9A200);
-const _lilac = Color(0xFFC9B8FF);
+// The lesson chrome follows the app's palette rather than SketchStep's dark
+// violet, so the screen reads as EduBuddy. _ink survives as the dark *text*
+// colour on light surfaces, which is how most of its uses were already read.
+const _ink = AppColors.textDark;
+const _sun = AppColors.primary;
+const _sunEdge = AppColors.primaryDeep;
+const _lilac = AppColors.textMuted;
 
 class _Done {
   final Uint8List png;
@@ -237,8 +242,9 @@ class _SketchLessonScreenState extends State<SketchLessonScreen> with SingleTick
   Widget build(BuildContext context) {
     final t = _lang.t;
     final lang = _lang.value;
+    final skin = context.watch<AppProvider>().themeSkin;
     return Scaffold(
-      backgroundColor: _ink,
+      backgroundColor: skin.background,
       body: SafeArea(
         child: Stack(
           children: [
@@ -267,7 +273,7 @@ class _SketchLessonScreenState extends State<SketchLessonScreen> with SingleTick
             children: [
               IconButton(
                 onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.close_rounded, color: paperColor),
+                icon: const Icon(Icons.close_rounded, color: AppColors.textDark),
                 tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
               ),
               Expanded(
@@ -275,7 +281,7 @@ class _SketchLessonScreenState extends State<SketchLessonScreen> with SingleTick
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(lesson.title.of(lang),
-                        style: const TextStyle(color: paperColor, fontSize: 18, fontWeight: FontWeight.w800)),
+                        style: const TextStyle(color: AppColors.textDark, fontSize: 18, fontWeight: FontWeight.w800)),
                     Text('${t('step')} ${_step + 1} ${t('of')} ${lesson.steps.length}',
                         style: const TextStyle(color: _lilac, fontSize: 13)),
                   ],
@@ -294,10 +300,10 @@ class _SketchLessonScreenState extends State<SketchLessonScreen> with SingleTick
                       height: 6,
                       margin: const EdgeInsets.symmetric(horizontal: 2),
                       decoration: BoxDecoration(
-                        color: i < _step ? _sun : paperColor.withValues(alpha: 0.16),
+                        color: i < _step ? _sun : AppColors.divider,
                         borderRadius: BorderRadius.circular(3),
                         gradient: i == _step
-                            ? LinearGradient(colors: [_sun, _sun, paperColor.withValues(alpha: 0.16)], stops: const [0, 0.35, 0.35])
+                            ? const LinearGradient(colors: [_sun, _sun, AppColors.divider], stops: [0, 0.35, 0.35])
                             : null,
                       ),
                     ),
@@ -318,15 +324,22 @@ class _SketchLessonScreenState extends State<SketchLessonScreen> with SingleTick
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(current.kind == StepKind.shade ? t('shadeHint') : t('traceHint'),
-                style: const TextStyle(color: _sun, fontSize: 13, fontWeight: FontWeight.w800)),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Text(current.kind == StepKind.shade ? t('shadeHint') : t('traceHint'),
+                  style: const TextStyle(color: AppColors.onPrimary, fontSize: 13, fontWeight: FontWeight.w800)),
+            ),
             const SizedBox(height: 4),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
               child: Text(
                 current.tip.of(lang),
                 key: ValueKey('$_step$lang'),
-                style: const TextStyle(color: paperColor, fontSize: 16, height: 1.4),
+                style: const TextStyle(color: AppColors.textDark, fontSize: 16, height: 1.4),
               ),
             ),
           ],
@@ -349,8 +362,16 @@ class _SketchLessonScreenState extends State<SketchLessonScreen> with SingleTick
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       color: paperColor,
-                      borderRadius: BorderRadius.circular(6),
-                      boxShadow: const [BoxShadow(color: Color(0xCC0A0028), blurRadius: 60, offset: Offset(0, 30), spreadRadius: -24)],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.divider, width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.textDark.withValues(alpha: 0.13),
+                          blurRadius: 24,
+                          offset: const Offset(0, 10),
+                          spreadRadius: -6,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -398,7 +419,7 @@ class _SketchLessonScreenState extends State<SketchLessonScreen> with SingleTick
           label: label,
         );
     return Container(
-      decoration: BoxDecoration(color: _inkDeep, border: Border(top: BorderSide(color: paperColor.withValues(alpha: 0.16)))),
+      decoration: const BoxDecoration(color: AppColors.surface, border: Border(top: BorderSide(color: AppColors.divider))),
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -420,7 +441,8 @@ class _SketchLessonScreenState extends State<SketchLessonScreen> with SingleTick
               _ToolButton(
                 selected: _showGuide,
                 onTap: () => setState(() => _showGuide = !_showGuide),
-                icon: Icon(_showGuide ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: _lilac),
+                icon: Icon(_showGuide ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                    color: _showGuide ? AppColors.onPrimary : _lilac),
                 label: t('guide'),
               ),
             ],
@@ -482,7 +504,7 @@ class _SketchLessonScreenState extends State<SketchLessonScreen> with SingleTick
                             TextSpan(text: '${t('accuracy')} '),
                             TextSpan(text: '${d.score}%', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22)),
                           ]), style: const TextStyle(color: _ink, fontSize: 16)),
-                          Text(t('savedNote'), style: const TextStyle(color: Color(0xFF5B4A86), fontSize: 13)),
+                          Text(t('savedNote'), style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
                           const SizedBox(height: 18),
                           Builder(
                             builder: (btn) => SunButton(
@@ -572,7 +594,7 @@ class _ToolButton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 6),
             margin: const EdgeInsets.symmetric(horizontal: 2),
             decoration: BoxDecoration(
-              color: selected ? paperColor.withValues(alpha: 0.1) : null,
+              color: selected ? AppColors.primarySoft : null,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Opacity(
@@ -585,7 +607,7 @@ class _ToolButton extends StatelessWidget {
                   Text(label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: selected ? paperColor : _lilac, fontSize: 11, fontWeight: FontWeight.w800)),
+                      style: TextStyle(color: selected ? AppColors.onPrimary : _lilac, fontSize: 11, fontWeight: FontWeight.w800)),
                 ],
               ),
             ),

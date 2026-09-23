@@ -30,15 +30,15 @@ class CategoryChip extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: isSelected
-                  ? category.color.withOpacity(0.4)
-                  : Colors.black.withOpacity(0.06),
+                  ? category.color.withValues(alpha: 0.4)
+                  : Colors.black.withValues(alpha: 0.06),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
           ],
           border: isSelected
               ? null
-              : Border.all(color: category.color.withOpacity(0.4), width: 1.5),
+              : Border.all(color: category.color.withValues(alpha: 0.4), width: 1.5),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

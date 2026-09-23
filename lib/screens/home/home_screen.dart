@@ -5,17 +5,24 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
 import '../../widgets/star_display.dart';
-import '../videos/videos_screen.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../services/sound_service.dart';
 import '../quizzes/quizzes_screen.dart';
 import '../storybooks/storybooks_screen.dart';
 import '../worksheets/worksheets_screen.dart';
 import '../tracing/tracing_screen.dart';
-import '../drawing/drawing_studio_screen.dart';
 import '../coloring/coloring_screen.dart';
 import '../counting/counting_screen.dart';
 import '../games/math_blast_screen.dart';
 import '../games/memory_match_screen.dart';
 import '../games/word_builder_screen.dart';
+import '../games/buddy_reader_screen.dart';
+import '../games/sentence_screen.dart';
+import '../journey/journey_screen.dart';
+import '../shop/shop_screen.dart';
+import '../../widgets/reward_overlay.dart';
+import '../../widgets/streak_chip.dart';
+import '../../sketch/sketch_tab_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,6 +45,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _floatOffset = Tween<double>(begin: -6, end: 6).animate(
       CurvedAnimation(parent: _floatAnim, curve: Curves.easeInOut),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _celebrateStreak());
+  }
+
+  /// Shows the streak celebration for a new day, exactly once.
+  ///
+  /// The streak is recorded during load, before Home is built, so the event is
+  /// held on the provider and consumed here rather than fired from the loader.
+  Future<void> _celebrateStreak() async {
+    if (!mounted) return;
+    final provider = context.read<AppProvider>();
+    final event = provider.consumeStreakEvent();
+    if (event == null) return;
+    // Let the route transition from the splash finish first, so the
+    // celebration lands on a settled Home rather than mid-slide.
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+    final t = provider.t;
+    await showRewardSheet(
+      context,
+      title: event.freezeUsed
+          ? t('Streak saved!', 'Streak diselamatkan!')
+          : t('Day ${event.current}!', 'Hari ke-${event.current}!'),
+      subtitle: event.freezesEarned > 0
+          ? t('You earned a streak freeze.', 'Kau dapat perisai streak.')
+          : null,
+      streak: event,
+      buddy: buddyVariantFromId(provider.userAvatar),
+      hat: provider.buddyHat,
+      accessory: provider.buddyAccessory,
+    );
   }
 
   @override
@@ -52,11 +89,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
         return Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: provider.themeSkin.background,
           body: CustomScrollView(
             slivers: [
               _buildHeader(context, provider),
               _buildStatsRow(context, provider),
+              // The daily challenge sits directly under the header: it is the
+              // one thing that changes every day, so it earns the top slot.
+              _buildSectionTitle(context, provider.t("Today's Challenge", 'Cabaran Hari Ini'),
+                  provider.t('New every day!', 'Baharu setiap hari!')),
+              _buildDailyChallenge(context, provider),
+              _buildJourneyBanner(context, provider),
               _buildSectionTitle(context, provider.t('Quick Start', 'Mula Cepat'),
                   provider.t('Jump right in!', 'Terus mula!')),
               _buildQuickStartGrid(context, provider),
@@ -70,9 +113,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   provider.t('Writing Practice', 'Latihan Menulis'),
                   provider.t('Trace letters & numbers!', 'Surih huruf & nombor!')),
               _buildTracingBanner(context, provider),
-              _buildSectionTitle(context, provider.t("Today's Challenge", 'Cabaran Hari Ini'),
-                  provider.t('Try something new!', 'Cuba sesuatu yang baru!')),
-              _buildDailyChallenge(context, provider),
               _buildSectionTitle(context, provider.t('Recent Activity', 'Aktiviti Terkini'),
                   provider.t('Keep it up!', 'Teruskan!')),
               _buildRecentActivity(context, provider),
@@ -89,13 +129,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildHeader(BuildContext context, AppProvider provider) {
     return SliverToBoxAdapter(
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
+            colors: provider.themeSkin.headerGradient,
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFFF6B35), Color(0xFFFF9F43)],
           ),
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
+          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(36)),
+          boxShadow: [
+            BoxShadow(
+              color: provider.themeSkin.headerGradient.last
+                  .withValues(alpha: 0.25),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: SafeArea(
           bottom: false,
@@ -103,28 +151,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
             child: Row(
               children: [
-                // Animated avatar
+                // Buddy mascot (original, animated, reacts)
                 AnimatedBuilder(
                   animation: _floatAnim,
                   builder: (_, _) => Transform.translate(
                     offset: Offset(0, _floatOffset.value * 0.5),
-                    child: Container(
-                      width: 62,
-                      height: 62,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.18),
-                            blurRadius: 14,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: CustomPaint(
-                        painter: _AvatarPainter(provider.userAvatar),
-                      ),
+                    child: BuddyMascot(
+                      size: 72,
+                      waving: true,
+                      // Same reason as the splash: the header is that yellow.
+                      antennaColor: const Color(0xFF23348C),
+                      variant: buddyVariantFromId(provider.userAvatar),
+                      hat: provider.buddyHat,
+                      accessory: provider.buddyAccessory,
+                      // Buddy visibly reacts to how long the child has been
+                      // away — the companion is the pull that brings them back.
+                      mood: provider.buddyMood,
                     ),
                   ),
                 ),
@@ -136,26 +178,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       FadeTransition(
                         opacity: _headerAnim,
                         child: Text(
-                          'Hello, ${provider.userName}! 👋',
+                          'Hello, ${provider.userName}!',
                           style: const TextStyle(
                             fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white,
                           ),
                         ),
                       ),
                       Text(
-                        provider.t('Ready to learn today?', 'Sedia belajar hari ini?'),
+                        provider.buddyGreeting,
                         style: const TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      StreakChip(
+                        days: provider.streakDays,
+                        freezes: provider.streakFreezes,
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(20),
+                BouncyButton(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ShopScreen()),
                   ),
-                  child: StarDisplay(stars: provider.totalStars, color: AppColors.secondary, size: 20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: StarDisplay(stars: provider.spendableStars, color: Colors.white, size: 20),
+                  ),
                 ),
               ],
             ),
@@ -173,8 +225,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         child: Row(
           children: [
-            _AnimatedStatCard(value: '${provider.videosWatched}', label: provider.t('Videos', 'Video'), gradient: AppColors.gradients[5]),
-            const SizedBox(width: 10),
             _AnimatedStatCard(value: '${provider.quizzesCompleted}', label: provider.t('Quizzes', 'Kuiz'), gradient: AppColors.gradients[3]),
             const SizedBox(width: 10),
             _AnimatedStatCard(value: '${provider.storiesRead}', label: provider.t('Stories', 'Cerita'), gradient: AppColors.gradients[1]),
@@ -213,22 +263,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final items = [
       _QuickItem(provider.t('Word Builder', 'Eja Perkataan'),
           provider.t('Spell b _ s = bus!', 'Eja b _ s = bas!'),
-          AppColors.gradients[5], const _EmojiGraphic('🔤'),
+          AppColors.gradients[2], Icons.abc_rounded,
           () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const WordBuilderScreen()))),
+      _QuickItem(provider.t('Buddy Reader', 'Buddy Membaca'),
+          provider.t('Drag letters, read words!', 'Seret huruf, baca perkataan!'),
+          AppColors.gradients[4], Icons.auto_stories_rounded,
+          () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const BuddyReaderScreen()))),
+      _QuickItem(provider.t('Sentences', 'Bina Ayat'),
+          provider.t('Build, fill & match!', 'Susun, isi & padan!'),
+          AppColors.gradients[3], Icons.chat_bubble_rounded,
+          () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const SentenceScreen()))),
       _QuickItem(provider.t('Math Blast', 'Kira Cepat'),
           provider.t('3 + 2 = ?', '3 + 2 = ?'),
-          [const Color(0xFFE85B5B), const Color(0xFFC8425B)],
-          const _EmojiGraphic('🧮'),
+          AppColors.gradients[5], Icons.calculate_rounded,
           () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const MathBlastScreen()))),
       _QuickItem(provider.t('Quizzes', 'Kuiz'),
           provider.t('Test yourself!', 'Uji diri anda!'),
-          AppColors.gradients[3], const _EmojiGraphic('🧠'), () => _navigate(context, 2)),
+          AppColors.gradients[3], Icons.psychology_rounded,
+          () => _navigate(context, 2)),
       _QuickItem(provider.t('Memory Match', 'Padanan Memori'),
           provider.t('30 levels!', '30 tahap!'),
-          [const Color(0xFF4ECDC4), const Color(0xFF2BA79E)],
-          const _EmojiGraphic('🎴'),
+          AppColors.gradients[1], Icons.grid_view_rounded,
           () => Navigator.push(context,
               MaterialPageRoute(builder: (_) => const MemoryMatchScreen()))),
     ];
@@ -254,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: ScaleAnimation(
                   scale: 0.85,
                   child: FadeInAnimation(
-                    child: _QuickStartCard(item: entry.value, floatAnim: _floatAnim),
+                    child: _QuickStartCard(item: entry.value),
                   ),
                 ),
               );
@@ -271,37 +330,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final activities = [
       _CreativeItem(
         title: provider.t('Drawing\nStudio', 'Studio\nLukisan'),
-        subtitle: provider.t('Free draw!', 'Lukis bebas!'),
-        gradient: [const Color(0xFF1A1A2E), const Color(0xFF16213E)],
-        graphic: _DrawingGraphic(),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DrawingStudioScreen())),
+        subtitle: provider.t('75 lessons!', '75 pelajaran!'),
+        gradient: AppColors.gradients[0],
+        icon: Icons.brush_rounded,
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SketchTabScreen())),
       ),
       _CreativeItem(
         title: provider.t('Coloring\nBook', 'Buku\nMewarna'),
         subtitle: provider.t('Tap to fill!', 'Tap untuk warna!'),
-        gradient: [const Color(0xFFFF6B35), const Color(0xFFFF9F43)],
-        graphic: _ColoringGraphic(),
+        gradient: AppColors.gradients[1],
+        icon: Icons.palette_rounded,
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ColoringScreen())),
       ),
       _CreativeItem(
         title: provider.t('Counting\nGame', 'Permainan\nMengira'),
         subtitle: provider.t('Count it!', 'Kira!'),
-        gradient: [const Color(0xFF7BC67E), const Color(0xFF4CAF50)],
-        graphic: _CountingGraphic(),
+        gradient: AppColors.gradients[4],
+        icon: Icons.confirmation_number_rounded,
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CountingScreen())),
-      ),
-      _CreativeItem(
-        title: provider.t('Fun\nVideos', 'Video\nSeronok'),
-        subtitle: provider.t('Watch & sing!', 'Tonton & nyanyi!'),
-        gradient: [const Color(0xFF1E88E5), const Color(0xFF64B5F6)],
-        graphic: const _EmojiGraphic('🎬'),
-        onTap: () => _navigate(context, 1),
       ),
       _CreativeItem(
         title: provider.t('Work\nSheets', 'Lembaran\nKerja'),
         subtitle: provider.t('Practice!', 'Latihan!'),
-        gradient: [const Color(0xFF66BB6A), const Color(0xFF43A047)],
-        graphic: const _EmojiGraphic('📄'),
+        gradient: AppColors.gradients[5],
+        icon: Icons.assignment_rounded,
         onTap: () => _navigateToWorksheets(context),
       ),
     ];
@@ -331,7 +383,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF4ECDC4), Color(0xFF44A8B3)]),
+              color: const Color(0xFF4ECDC4),
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(color: const Color(0xFF4ECDC4).withValues(alpha: 0.4), blurRadius: 16, offset: const Offset(0, 6)),
@@ -379,55 +431,117 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   // ── Daily challenge ───────────────────────────────────────────────────────
 
+  /// Today's challenge.
+  ///
+  /// This used to be a label on the first unfinished quiz, which never changed
+  /// at midnight, never finished, and paid nothing. It is now a real daily:
+  /// chosen from the calendar date, the same all day, reset at local midnight,
+  /// and worth stars when completed — which is the whole reason to come back
+  /// tomorrow rather than today.
   Widget _buildDailyChallenge(BuildContext context, AppProvider provider) {
-    if (provider.quizzes.isEmpty) return const SliverToBoxAdapter(child: SizedBox());
-    final quiz = provider.quizzes.firstWhere((q) => !q.isCompleted, orElse: () => provider.quizzes.first);
+    final challenge = provider.dailyChallenge;
+    if (challenge == null) return const SliverToBoxAdapter(child: SizedBox());
+
+    final (emoji, en, ms) = _challengeLabel(challenge.kind);
+    final claimable = challenge.isClaimable;
+    final done = challenge.isComplete;
+
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: BouncyButton(
-          onTap: () => _navigate(context, 2),
+          onTap: () => _onChallengeTap(context, provider),
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF667EEA), Color(0xFF764BA2)]),
+              color: claimable ? AppColors.success : const Color(0xFF667EEA),
               borderRadius: BorderRadius.circular(24),
-              boxShadow: [BoxShadow(color: const Color(0xFF667EEA).withValues(alpha: 0.4), blurRadius: 16, offset: const Offset(0, 6))],
+              boxShadow: [
+                BoxShadow(
+                  color: (claimable ? AppColors.success : const Color(0xFF667EEA))
+                      .withValues(alpha: 0.4),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
             child: Row(
               children: [
                 Container(
-                  width: 64, height: 64,
+                  width: 64,
+                  height: 64,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Center(child: Text(quiz.emoji, style: const TextStyle(fontSize: 36))),
+                  child: Center(
+                    child: Text(emoji, style: const TextStyle(fontSize: 32)),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(provider.t("Today's Quiz", 'Kuiz Hari Ini'),
-                          style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w700)),
+                      Text(
+                        provider.t("Today's Challenge", 'Cabaran Hari Ini'),
+                        style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700),
+                      ),
                       const SizedBox(height: 2),
-                      Text(quiz.title,
-                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 4),
+                      Text(
+                        provider.t(en, ms),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(5),
+                        child: LinearProgressIndicator(
+                          value: challenge.fraction,
+                          minHeight: 7,
+                          backgroundColor: Colors.white24,
+                          valueColor:
+                              const AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
                       Row(children: [
-                        _badge(provider.t('5 Questions', '5 Soalan'), Colors.white24),
+                        _badge(
+                          '${challenge.progress}/${challenge.targetCount}',
+                          Colors.white24,
+                        ),
                         const SizedBox(width: 6),
-                        if (quiz.highScore > 0)
-                          _badge(provider.t('Best: ${quiz.highScore}⭐', 'Terbaik: ${quiz.highScore}⭐'), Colors.white24),
+                        _badge(
+                          claimable
+                              ? provider.t('Tap to claim!', 'Tap untuk tuntut!')
+                              : (done
+                                  ? provider.t('Done today', 'Selesai hari ini')
+                                  : '+${challenge.reward} ⭐'),
+                          Colors.white24,
+                        ),
                       ]),
                     ],
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
+                  decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle),
+                  child: Icon(
+                    claimable
+                        ? Icons.card_giftcard_rounded
+                        : (done
+                            ? Icons.check_rounded
+                            : Icons.play_arrow_rounded),
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
               ],
             ),
@@ -435,6 +549,135 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ),
       ),
     );
+  }
+
+  /// Entry point to the winding path.
+  ///
+  /// A grid shows a child everything that exists; the path shows them what is
+  /// *next*, which is what actually pulls someone forward.
+  Widget _buildJourneyBanner(BuildContext context, AppProvider provider) {
+    final done = provider.quizzesCompleted +
+        provider.storiesRead +
+        provider.worksheetsDone +
+        provider.creativeDone +
+        (provider.badgeProgress['game_levels'] ?? 0);
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+        child: BouncyButton(
+          onTap: () {
+            SoundService.instance.tap();
+            Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const JourneyScreen()));
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                BuddyMascot(
+                  size: 46,
+                  variant: buddyVariantFromId(provider.userAvatar),
+                  hat: provider.buddyHat,
+                  accessory: provider.buddyAccessory,
+                  animation: BuddyAnim.hop,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        provider.t('My Journey', 'Perjalanan Saya'),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      Text(
+                        provider.t('$done stops done — see what is next',
+                            '$done hentian selesai — lihat yang seterusnya'),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    color: AppColors.textMuted),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static (String, String, String) _challengeLabel(String kind) =>
+      switch (kind) {
+        'quiz' => ('🧠', 'Finish a quiz', 'Habiskan satu kuiz'),
+        'story' => ('📚', 'Read a story', 'Baca satu cerita'),
+        'worksheet' => ('📝', 'Do a worksheet', 'Buat satu lembaran'),
+        'math' => ('➕', 'Clear 2 Math Blast levels', 'Habiskan 2 tahap Math Blast'),
+        'word' => ('🔤', 'Clear 2 Word Builder levels', 'Habiskan 2 tahap Bina Perkataan'),
+        'memory' => ('🃏', 'Clear a Memory Match level', 'Habiskan satu tahap Padanan'),
+        'creative' => ('🎨', 'Make something', 'Cipta sesuatu'),
+        _ => ('⭐', 'Play something', 'Main sesuatu'),
+      };
+
+  /// Claims the reward when it is ready, and otherwise takes the child
+  /// straight to the activity the challenge is asking for.
+  Future<void> _onChallengeTap(
+      BuildContext context, AppProvider provider) async {
+    final challenge = provider.dailyChallenge;
+    if (challenge == null) return;
+
+    if (challenge.isClaimable) {
+      final stars = await provider.claimDailyChallenge();
+      if (!context.mounted || stars <= 0) return;
+      final badges = List.of(provider.newlyEarnedBadges);
+      await showRewardSheet(
+        context,
+        title: provider.t('Challenge complete!', 'Cabaran selesai!'),
+        subtitle: provider.t(
+            'Come back tomorrow for a new one.', 'Datang esok untuk yang baharu.'),
+        stars: stars,
+        badges: badges,
+        buddy: buddyVariantFromId(provider.userAvatar),
+        hat: provider.buddyHat,
+        accessory: provider.buddyAccessory,
+      );
+      return;
+    }
+
+    SoundService.instance.tap();
+    final screen = switch (challenge.kind) {
+      'quiz' => const QuizzesScreen(),
+      'story' => const StorybooksScreen(),
+      'worksheet' => const WorksheetsScreen(),
+      'math' => const MathBlastScreen(),
+      'word' => const WordBuilderScreen(),
+      'memory' => const MemoryMatchScreen(),
+      _ => const ColoringScreen(),
+    };
+    if (!context.mounted) return;
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => screen));
   }
 
   Widget _badge(String text, Color bg) {
@@ -448,10 +691,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // ── Recent activity ───────────────────────────────────────────────────────
 
   Widget _buildRecentActivity(BuildContext context, AppProvider provider) {
-    final watchedVideos = provider.videos.where((v) => v.isWatched).take(3).toList();
     final completedQuizzes = provider.quizzes.where((q) => q.isCompleted).take(2).toList();
 
-    if (watchedVideos.isEmpty && completedQuizzes.isEmpty) {
+    if (completedQuizzes.isEmpty) {
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -464,7 +706,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             child: Column(
               children: [
-                const Text('🌟', style: TextStyle(fontSize: 48)),
+                const Icon(Icons.auto_awesome_rounded, size: 48, color: AppColors.primary),
                 const SizedBox(height: 8),
                 Text(provider.t('No activity yet!', 'Belum ada aktiviti!'),
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textDark)),
@@ -486,13 +728,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           children: [
-            ...watchedVideos.map((v) => _ActivityTile(
-                  emoji: v.thumbnailEmoji, title: v.title,
-                  subtitle: provider.t('Video watched', 'Video ditonton'), color: AppColors.blue)),
             ...completedQuizzes.map((q) => _ActivityTile(
-                  emoji: q.emoji, title: q.title,
-                  subtitle: provider.t('Best score: ${q.highScore} ⭐', 'Skor terbaik: ${q.highScore} ⭐'),
-                  color: AppColors.purple)),
+                  icon: Icons.psychology_rounded, title: q.title,
+                  subtitle: provider.t('Best score: ${q.highScore}', 'Skor terbaik: ${q.highScore}'),
+                  color: AppColors.indigo)),
           ],
         ),
       ),
@@ -501,7 +740,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _navigate(BuildContext context, int index) {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => index == 1 ? const VideosScreen() : index == 2 ? const QuizzesScreen() : const StorybooksScreen(),
+      builder: (_) => index == 2 ? const QuizzesScreen() : const StorybooksScreen(),
     ));
   }
 
@@ -516,18 +755,39 @@ class _QuickItem {
   final String title;
   final String subtitle;
   final List<Color> gradient;
-  final Widget graphic;
+  final IconData icon;
   final VoidCallback onTap;
-  _QuickItem(this.title, this.subtitle, this.gradient, this.graphic, this.onTap);
+  _QuickItem(this.title, this.subtitle, this.gradient, this.icon, this.onTap);
 }
 
 class _CreativeItem {
   final String title;
   final String subtitle;
   final List<Color> gradient;
-  final Widget graphic;
+  final IconData icon;
   final VoidCallback onTap;
-  _CreativeItem({required this.title, required this.subtitle, required this.gradient, required this.graphic, required this.onTap});
+  _CreativeItem({required this.title, required this.subtitle, required this.gradient, required this.icon, required this.onTap});
+}
+
+/// Cohesive icon chip: a Material icon on a soft tinted circle (no emoji).
+class _IconGraphic extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final double size;
+  const _IconGraphic(this.icon, this.color, {this.size = 32});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size + 24,
+      height: size + 24,
+      decoration: BoxDecoration(
+        color: AppColors.tintFor(color),
+        shape: BoxShape.circle,
+      ),
+      child: Center(child: Icon(icon, color: color, size: size)),
+    );
+  }
 }
 
 // ─── Animated stat card ───────────────────────────────────────────────────────
@@ -545,11 +805,7 @@ class _AnimatedStatCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [gradient[0].withValues(alpha: 0.15), gradient[1].withValues(alpha: 0.08)],
-          ),
+          color: gradient[0].withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: gradient[0].withValues(alpha: 0.3)),
         ),
@@ -558,7 +814,7 @@ class _AnimatedStatCard extends StatelessWidget {
             Container(
               width: 32, height: 32,
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: gradient),
+                color: gradient[0],
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -578,9 +834,8 @@ class _AnimatedStatCard extends StatelessWidget {
 
 class _QuickStartCard extends StatelessWidget {
   final _QuickItem item;
-  final AnimationController floatAnim;
 
-  const _QuickStartCard({required this.item, required this.floatAnim});
+  const _QuickStartCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
@@ -588,7 +843,7 @@ class _QuickStartCard extends StatelessWidget {
       onTap: item.onTap,
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: item.gradient),
+          color: item.gradient[0],
           borderRadius: BorderRadius.circular(24),
           boxShadow: [BoxShadow(color: item.gradient[0].withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 6))],
         ),
@@ -599,13 +854,7 @@ class _QuickStartCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Center(
-                  child: AnimatedBuilder(
-                    animation: floatAnim,
-                    builder: (_, _) => Transform.translate(
-                      offset: Offset(0, floatAnim.value * 3 - 3),
-                      child: SizedBox(width: 72, height: 72, child: item.graphic),
-                    ),
-                  ),
+                  child: _IconGraphic(item.icon, item.gradient[0], size: 34),
                 ),
               ),
               Text(item.title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)),
@@ -633,7 +882,7 @@ class _CreativeCard extends StatelessWidget {
       child: Container(
         width: 130,
         decoration: BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: item.gradient),
+          color: item.gradient[0],
           borderRadius: BorderRadius.circular(24),
           boxShadow: [BoxShadow(color: item.gradient[0].withValues(alpha: 0.45), blurRadius: 14, offset: const Offset(0, 6))],
         ),
@@ -646,7 +895,7 @@ class _CreativeCard extends StatelessWidget {
                 animation: floatAnim,
                 builder: (_, _) => Transform.translate(
                   offset: Offset(0, floatAnim.value * 2.5 - 2.5),
-                  child: SizedBox(width: 56, height: 56, child: item.graphic),
+                  child: _IconGraphic(item.icon, item.gradient[0], size: 30),
                 ),
               ),
               const Spacer(),
@@ -664,12 +913,12 @@ class _CreativeCard extends StatelessWidget {
 // ─── Activity tile ────────────────────────────────────────────────────────────
 
 class _ActivityTile extends StatelessWidget {
-  final String emoji;
+  final IconData icon;
   final String title;
   final String subtitle;
   final Color color;
 
-  const _ActivityTile({required this.emoji, required this.title, required this.subtitle, required this.color});
+  const _ActivityTile({required this.icon, required this.title, required this.subtitle, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -685,8 +934,8 @@ class _ActivityTile extends StatelessWidget {
         children: [
           Container(
             width: 44, height: 44,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-            child: Center(child: Text(emoji, style: const TextStyle(fontSize: 22))),
+            decoration: BoxDecoration(color: AppColors.tintFor(color), borderRadius: BorderRadius.circular(12)),
+            child: Center(child: Icon(icon, color: color, size: 22)),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -708,193 +957,6 @@ class _ActivityTile extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════════
 // Custom Painter Graphics
 // ═══════════════════════════════════════════════════════════════════════════════
-
-// Avatar painter — draws a round smiley with the emoji
-class _AvatarPainter extends CustomPainter {
-  final String emoji;
-  _AvatarPainter(this.emoji);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final tp = TextPainter(
-      text: TextSpan(text: emoji, style: TextStyle(fontSize: size.shortestSide * 0.55)),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, Offset((size.width - tp.width) / 2, (size.height - tp.height) / 2));
-  }
-
-  @override
-  bool shouldRepaint(_AvatarPainter old) => old.emoji != emoji;
-}
-
-// Simple emoji graphic — used for Quick Start cards (Videos, Quizzes, Stories, Worksheets)
-class _EmojiGraphic extends StatelessWidget {
-  final String emoji;
-  const _EmojiGraphic(this.emoji);
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(emoji, style: const TextStyle(fontSize: 44)),
-    );
-  }
-}
-
-// Drawing Studio graphic — palette
-class _DrawingGraphic extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(painter: _DrawingIconPainter());
-  }
-}
-
-class _DrawingIconPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2, cy = size.height / 2;
-    final r = size.shortestSide * 0.42;
-    // Palette body
-    final palettePath = Path();
-    palettePath.addOval(Rect.fromCircle(center: Offset(cx, cy), radius: r));
-    palettePath.addOval(Rect.fromCircle(center: Offset(cx + r * 0.3, cy + r * 0.3), radius: r * 0.35));
-    palettePath.fillType = PathFillType.evenOdd;
-    canvas.drawPath(palettePath, Paint()..color = Colors.white);
-    // Color dots on palette
-    final dots = [
-      (Offset(cx - r * 0.38, cy - r * 0.2), const Color(0xFFFF5252)),
-      (Offset(cx, cy - r * 0.55), const Color(0xFFFFD740)),
-      (Offset(cx + r * 0.38, cy - r * 0.2), const Color(0xFF69F0AE)),
-      (Offset(cx + r * 0.25, cy + r * 0.35), const Color(0xFF40C4FF)),
-      (Offset(cx - r * 0.35, cy + r * 0.35), const Color(0xFFFF80AB)),
-    ];
-    for (final d in dots) {
-      canvas.drawCircle(d.$1, r * 0.16, Paint()..color = d.$2);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DrawingIconPainter _) => false;
-}
-
-// Coloring graphic — crayon
-class _ColoringGraphic extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(painter: _ColoringIconPainter());
-  }
-}
-
-class _ColoringIconPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2, cy = size.height / 2;
-    final h = size.height, w = size.width;
-
-    // Crayon body
-    final body = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(cx, cy - h * 0.05), width: w * 0.3, height: h * 0.7),
-      const Radius.circular(8),
-    );
-    canvas.drawRRect(body, Paint()..color = Colors.white);
-
-    // Crayon label band
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset(cx, cy + h * 0.08), width: w * 0.3, height: h * 0.18),
-      Paint()..color = Colors.white.withValues(alpha: 0.5),
-    );
-
-    // Crayon tip
-    final tip = Path()
-      ..moveTo(cx - w * 0.15, cy + h * 0.31)
-      ..lineTo(cx + w * 0.15, cy + h * 0.31)
-      ..lineTo(cx, cy + h * 0.48)
-      ..close();
-    canvas.drawPath(tip, Paint()..color = Colors.white.withValues(alpha: 0.75));
-
-    // Stars burst around
-    for (int i = 0; i < 4; i++) {
-      const pi = 3.141592653589793;
-      final angle = i * pi / 2 + pi / 4;
-      final dx = cx + w * 0.4 * _cosImpl(angle);
-      final dy = cy + h * 0.4 * _sinImpl(angle);
-      final sp = Paint()..color = Colors.white.withValues(alpha: 0.6);
-      canvas.drawCircle(Offset(dx, dy), w * 0.05, sp);
-    }
-  }
-
-  double _cosImpl(double a) {
-    const pi = 3.141592653589793;
-    a = a % (2 * pi); if (a < 0) a += 2 * pi;
-    if (a < pi / 2) return _ct(a);
-    if (a < pi) return -_ct(pi - a);
-    if (a < 3 * pi / 2) return -_ct(a - pi);
-    return _ct(2 * pi - a);
-  }
-  double _sinImpl(double a) => _cosImpl(a - 3.141592653589793 / 2);
-  double _ct(double x) { final x2 = x * x; return 1 - x2/2 + x2*x2/24 - x2*x2*x2/720; }
-
-  @override
-  bool shouldRepaint(_ColoringIconPainter _) => false;
-}
-
-// Counting graphic — floating stars
-class _CountingGraphic extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(painter: _CountingIconPainter());
-  }
-}
-
-class _CountingIconPainter extends CustomPainter {
-  static const _pi = 3.141592653589793;
-  static const _positions = [
-    (0.5, 0.22, 0.28), (0.18, 0.55, 0.2), (0.82, 0.55, 0.2),
-    (0.32, 0.82, 0.18), (0.68, 0.82, 0.18),
-  ];
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (final (px, py, pr) in _positions) {
-      final center = Offset(size.width * px, size.height * py);
-      final r = size.shortestSide * pr;
-      _drawStar(canvas, center, r, Colors.white);
-    }
-    // Number "5"
-    final tp = TextPainter(
-      text: TextSpan(text: '5', style: TextStyle(fontSize: size.height * 0.28, fontWeight: FontWeight.w900, color: Colors.white.withValues(alpha: 0.4))),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(canvas, Offset(size.width * 0.38, size.height * 0.36));
-  }
-
-  void _drawStar(Canvas canvas, Offset center, double r, Color color) {
-    final path = Path();
-    const n = 5;
-    final inner = r * 0.42;
-    for (int i = 0; i < n * 2; i++) {
-      final angle = i * _pi / n - _pi / 2;
-      final rad = i.isEven ? r : inner;
-      final x = center.dx + rad * _cosImpl(angle);
-      final y = center.dy + rad * _sinImpl(angle);
-      if (i == 0) { path.moveTo(x, y); } else { path.lineTo(x, y); }
-    }
-    path.close();
-    canvas.drawPath(path, Paint()..color = color);
-  }
-
-  double _cosImpl(double a) {
-    a = a % (2 * _pi); if (a < 0) a += 2 * _pi;
-    if (a < _pi / 2) return _ct(a);
-    if (a < _pi) return -_ct(_pi - a);
-    if (a < 3 * _pi / 2) return -_ct(a - _pi);
-    return _ct(2 * _pi - a);
-  }
-  double _sinImpl(double a) => _cosImpl(a - _pi / 2);
-  double _ct(double x) { final x2 = x * x; return 1 - x2/2 + x2*x2/24 - x2*x2*x2/720; }
-
-  @override
-  bool shouldRepaint(_CountingIconPainter _) => false;
-}
 
 // Tracing banner graphic — stylised pencil + letter A
 class _TracingBannerGraphic extends CustomPainter {

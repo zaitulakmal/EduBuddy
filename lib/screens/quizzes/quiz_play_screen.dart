@@ -6,12 +6,17 @@ import '../../providers/app_provider.dart';
 import '../../widgets/bouncy_button.dart';
 import '../../widgets/animal_illustrations.dart';
 import '../../widgets/subject_illustrations.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../widgets/illustrations.dart';
+import '../../widgets/page_theme.dart';
+import '../../widgets/reward_overlay.dart';
+import '../../widgets/score_monster.dart';
 import '../../services/sound_service.dart';
+import '../../theme/app_theme.dart';
 
 // ── Reference-matched palette ─────────────────────────────────────────────────
 const _kBgOrange    = Color(0xFFE8784A);
 const _kHeaderGreen = Color(0xFF7B8C3A);
-const _kProgressBar = Color(0xFF8B78C8);
 const _kCream       = Color(0xFFF5E8C0);
 const _kCreamDark   = Color(0xFFE8D4A0);
 const _kBlobYellow  = Color(0xFFF5C842);
@@ -42,6 +47,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
   int _streak = 0;
   int _maxStreak = 0;
   bool _timedOut = false;
+  bool _dragMode = false;
 
   late AnimationController _cardCtrl;
   late Animation<double> _cardScale;
@@ -162,11 +168,33 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
       _timerCtrl.forward(from: 0);
     } else {
       _timerCtrl.stop();
-      widget.provider.saveQuizScore(widget.quiz.id!, _score);
       setState(() => _quizDone = true);
       SoundService.instance.win();
       _confettiCtrl.play();
+      _recordScore();
     }
+  }
+
+  /// Saves the score, then celebrates any badge it earned on top of the
+  /// results screen. The results screen is its own celebration, so a badge is
+  /// the only thing worth interrupting it for.
+  Future<void> _recordScore() async {
+    final provider = widget.provider;
+    try {
+      await provider.saveQuizScore(widget.quiz.id!, _score);
+    } catch (_) {
+      return;
+    }
+    final badges = List.of(provider.newlyEarnedBadges);
+    if (!mounted || badges.isEmpty) return;
+    await showRewardSheet(
+      context,
+      title: provider.t('New badge!', 'Lencana baharu!'),
+      badges: badges,
+      buddy: buddyVariantFromId(provider.userAvatar),
+      hat: provider.buddyHat,
+      accessory: provider.buddyAccessory,
+    );
   }
 
   @override
@@ -208,7 +236,9 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
           _buildHeader(),
           _buildProgressBar(),
           Expanded(child: _buildQuestionCard(q)),
-          _buildAnswerGrid(q),
+          _dragMode
+              ? _buildAnswerDrag(q)
+              : _buildAnswerGrid(q),
           const SizedBox(height: 20),
         ],
       ),
@@ -238,6 +268,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
             ),
           ),
           const SizedBox(width: 12),
+          BuddyMascot(size: 40, variant: PagePalette.quizPlay.buddy, animation: PagePalette.quizPlay.anim),
           Expanded(
             child: Text(
               widget.quiz.title,
@@ -249,14 +280,26 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
             ),
           ),
           const SizedBox(width: 12),
-          // Help button — white circle
-          Container(
-            width: 38, height: 38,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.25),
-              shape: BoxShape.circle,
+          // Mode toggle: Tap / Drag (interactive option 2)
+          BouncyButton(
+            onTap: () => setState(() => _dragMode = !_dragMode),
+            child: Container(
+              height: 38,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  Icon(_dragMode ? Icons.touch_app_rounded : Icons.open_with_rounded,
+                      color: Colors.white, size: 18),
+                  const SizedBox(width: 4),
+                  Text(_dragMode ? 'Drag' : 'Tap',
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                ],
+              ),
             ),
-            child: const Icon(Icons.question_mark_rounded, color: Colors.white, size: 20),
           ),
         ],
       ),
@@ -264,27 +307,11 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
   }
 
   Widget _buildProgressBar() {
-    final progress = (_currentIndex + 1) / _questions.length;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 10,
-              backgroundColor: Colors.white.withValues(alpha: 0.35),
-              valueColor: const AlwaysStoppedAnimation(_kProgressBar),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Question ${_currentIndex + 1} of ${_questions.length}',
-            style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w700),
-          ),
-        ],
+      child: FunkyProgressDots(
+        total: _questions.length,
+        current: _currentIndex + 1,
       ),
     );
   }
@@ -340,7 +367,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: _timedOut
                       ? const Text(
-                          '⏰ Time\'s up!',
+                          'Time\'s up!',
                           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _kBgOrange),
                           textAlign: TextAlign.center,
                         )
@@ -362,7 +389,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
                       padding: const EdgeInsets.only(top: 8),
                       child: Transform.scale(
                         scale: _scorePop.value,
-                        child: const Text('⭐ +1', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _kBlobYellow)),
+                        child: const Text('+1', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: _kBlobYellow)),
                       ),
                     );
                   },
@@ -378,7 +405,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        '🔥 $_streak in a row!',
+                        '$_streak in a row!',
                         style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: _kBgOrange),
                       ),
                     ),
@@ -448,6 +475,101 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
             )).toList(),
           ),
         )).toList(),
+      ),
+    );
+  }
+
+  Widget _buildAnswerDrag(QuizQuestion q) {
+    final opts = q.options;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          Text(
+            _answered ? '' : 'Drag the right answer into the box!',
+            style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 10),
+          // Drop zone
+          DragTarget<int>(
+            onWillAcceptWithDetails: (_) => !_answered,
+            onAcceptWithDetails: (d) => _selectAnswer(d.data),
+            builder: (context, candidate, rejected) {
+              final active = candidate.isNotEmpty;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                height: 70,
+                decoration: BoxDecoration(
+                  color: active ? AppColors.primary.withValues(alpha: 0.25) : Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: active ? AppColors.primary : Colors.white.withValues(alpha: 0.5),
+                    width: active ? 3 : 2,
+                  ),
+                ),
+                child: Center(
+                  child: _answered
+                      ? _AnswerPill(
+                          text: opts[q.correctIndex],
+                          index: q.correctIndex,
+                          selectedIndex: _selectedAnswer,
+                          correctIndex: q.correctIndex,
+                          answered: true,
+                          onTap: () {},
+                        )
+                      : Text(
+                          active ? 'Drop it!' : 'Drop here',
+                          style: TextStyle(
+                            color: active ? AppColors.primary : Colors.white70,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 14),
+          // Draggable answer tiles (shuffled)
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            alignment: WrapAlignment.center,
+            children: opts.asMap().entries.map((e) {
+              final i = e.key;
+              final placed = _answered;
+              if (placed) return const SizedBox.shrink();
+              return Draggable<int>(
+                data: i,
+                feedback: _dragTile(opts[i], isFeedback: true),
+                childWhenDragging: Opacity(opacity: 0.35, child: _dragTile(opts[i])),
+                child: _dragTile(opts[i]),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dragTile(String text, {bool isFeedback = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        color: isFeedback ? AppColors.primary : _kCream,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.5), width: 2),
+        boxShadow: isFeedback
+            ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.4), blurRadius: 12, offset: const Offset(0, 6))]
+            : [],
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w900,
+          color: isFeedback ? AppColors.onPrimary : const Color(0xFF5A4A2A),
+        ),
       ),
     );
   }
@@ -528,10 +650,7 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
                     ),
                     const SizedBox(height: 8),
                     // Score monster (orange one-eyed)
-                    SizedBox(
-                      width: 80, height: 80,
-                      child: CustomPaint(painter: _ScoreMonsterPainter()),
-                    ),
+                    const ScoreMonster(size: 80),
                     const SizedBox(height: 6),
                     Text(
                       '$_score/$total',
@@ -545,14 +664,14 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
               const SizedBox(height: 24),
               // Message
               Text(
-                percent >= 0.8 ? 'Amazing! 🎉' : percent >= 0.5 ? 'Well done! 👍' : 'Keep trying! 💪',
+                percent >= 0.8 ? 'Amazing!' : percent >= 0.5 ? 'Well done!' : 'Keep trying!',
                 style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
               ),
               if (_maxStreak >= 3)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    '🔥 Best streak: $_maxStreak',
+                    'Best streak: $_maxStreak',
                     style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                 ),
@@ -591,14 +710,14 @@ class _QuizPlayScreenState extends State<QuizPlayScreen>
                           _timerCtrl.forward(from: 0);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: const Center(
-                            child: Text('🔄 Try Again', style: TextStyle(color: _kBgOrange, fontSize: 16, fontWeight: FontWeight.w900)),
-                          ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: const Center(
+                          child: Text('Try Again', style: TextStyle(color: _kBgOrange, fontSize: 16, fontWeight: FontWeight.w900)),
+                        ),
                         ),
                       ),
                     ),
@@ -846,55 +965,3 @@ class _QuestionGraphic extends StatelessWidget {
   }
 }
 
-// ─── Score screen monster (orange one-eyed winged) ────────────────────────────
-
-class _ScoreMonsterPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2, cy = size.height * 0.52;
-    final r = size.shortestSide * 0.42;
-
-    // Wings
-    final wingPaint = Paint()..color = const Color(0xFFFF9955);
-    final leftWing = Path()
-      ..moveTo(cx - r * 0.6, cy)
-      ..cubicTo(cx - r * 1.6, cy - r * 0.5, cx - r * 1.5, cy + r * 0.5, cx - r * 0.6, cy + r * 0.3)
-      ..close();
-    final rightWing = Path()
-      ..moveTo(cx + r * 0.6, cy)
-      ..cubicTo(cx + r * 1.6, cy - r * 0.5, cx + r * 1.5, cy + r * 0.5, cx + r * 0.6, cy + r * 0.3)
-      ..close();
-    canvas.drawPath(leftWing, wingPaint);
-    canvas.drawPath(rightWing, wingPaint);
-
-    // Body — orange
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx, cy), width: r * 1.6, height: r * 1.8),
-        Paint()..color = const Color(0xFFE8784A));
-
-    // Horn
-    final horn = Path()
-      ..moveTo(cx - r * 0.12, cy - r * 0.85)
-      ..lineTo(cx, cy - r * 1.2)
-      ..lineTo(cx + r * 0.12, cy - r * 0.85)
-      ..close();
-    canvas.drawPath(horn, Paint()..color = const Color(0xFFFF9955));
-
-    // Single eye
-    canvas.drawCircle(Offset(cx, cy - r * 0.1), r * 0.38, Paint()..color = Colors.white);
-    canvas.drawCircle(Offset(cx, cy - r * 0.1), r * 0.22, Paint()..color = const Color(0xFF222222));
-    canvas.drawCircle(Offset(cx + r * 0.08, cy - r * 0.18), r * 0.08, Paint()..color = Colors.white);
-
-    // Grinning mouth
-    final mp = Path()
-      ..moveTo(cx - r * 0.35, cy + r * 0.28)
-      ..quadraticBezierTo(cx, cy + r * 0.55, cx + r * 0.35, cy + r * 0.28);
-    canvas.drawPath(mp, Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 3..strokeCap = StrokeCap.round);
-
-    // Tiny legs
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx - r * 0.25, cy + r * 0.94), width: r * 0.28, height: r * 0.2), Paint()..color = const Color(0xFFE8784A));
-    canvas.drawOval(Rect.fromCenter(center: Offset(cx + r * 0.25, cy + r * 0.94), width: r * 0.28, height: r * 0.2), Paint()..color = const Color(0xFFE8784A));
-  }
-
-  @override
-  bool shouldRepaint(_ScoreMonsterPainter _) => false;
-}

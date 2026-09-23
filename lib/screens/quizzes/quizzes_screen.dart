@@ -5,7 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../models/quiz_model.dart';
 import '../../models/category_model.dart';
 import '../../widgets/bouncy_button.dart';
-import '../../widgets/header_back_button.dart';
+import '../../widgets/page_theme.dart';
 import 'quiz_play_screen.dart';
 
 class QuizzesScreen extends StatefulWidget {
@@ -54,48 +54,13 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
   }
 
   Widget _buildAppBar(BuildContext context) {
+    final provider = context.watch<AppProvider>();
     return SliverToBoxAdapter(
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF7C4DFF), Color(0xFFB388FF)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius:
-              BorderRadius.vertical(bottom: Radius.circular(32)),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-            child: Row(
-              children: [
-                const HeaderBackButton(),
-                const Text('🧩', style: TextStyle(fontSize: 32)),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(context.watch<AppProvider>().t('Quizzes', 'Kuiz'),
-                        style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white)),
-                    Text(
-                        context
-                            .watch<AppProvider>()
-                            .t('Test Your Knowledge!', 'Uji Pengetahuan Anda!'),
-                        style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+      child: FunkyHeader(
+        palette: PagePalette.quizzes,
+        title: provider.t('Quizzes', 'Kuiz'),
+        subtitle: provider.t('Test Your Knowledge!', 'Uji Pengetahuan Anda!'),
+        onBack: () => Navigator.of(context).pop(),
       ),
     );
   }
@@ -122,11 +87,17 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('📊 Your Progress',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textDark)),
+                  Row(
+                    children: [
+                      const Icon(Icons.bar_chart_rounded, size: 18, color: AppColors.textDark),
+                      const SizedBox(width: 6),
+                      const Text('Your Progress',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textDark)),
+                    ],
+                  ),
                   Text('$completed / $total',
                       style: const TextStyle(
                           fontSize: 16,
@@ -148,8 +119,8 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
               const SizedBox(height: 8),
               Text(
                 completed == total && total > 0
-                    ? '🎉 Amazing! You completed all quizzes!'
-                    : '⭐ Keep going! You\'re doing great!',
+                    ? 'Amazing! You completed all quizzes!'
+                    : 'Keep going! You\'re doing great!',
                 style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textMuted,
@@ -191,7 +162,7 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
                 children: [
                   _FilterChip(
                     label: 'All',
-                    icon: '🧩',
+                    icon: Icons.apps_rounded,
                     selected: _selectedCategoryId == null,
                     onTap: () =>
                         setState(() => _selectedCategoryId = null),
@@ -199,7 +170,7 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
                   ),
                   ...filterCats.map((cat) => _FilterChip(
                         label: cat.name,
-                        icon: cat.icon,
+                        icon: Icons.category_rounded,
                         selected: _selectedCategoryId == cat.id,
                         onTap: () =>
                             setState(() => _selectedCategoryId = cat.id),
@@ -278,7 +249,7 @@ class _QuizzesScreenState extends State<QuizzesScreen> {
 
 class _FilterChip extends StatelessWidget {
   final String label;
-  final String icon;
+  final IconData icon;
   final bool selected;
   final VoidCallback onTap;
   final Color color;
@@ -310,7 +281,7 @@ class _FilterChip extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Text(icon, style: const TextStyle(fontSize: 14)),
+            Icon(icon, color: selected ? Colors.white : AppColors.textDark, size: 16),
             const SizedBox(width: 6),
             Text(label,
                 style: TextStyle(
@@ -335,7 +306,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = category?.name ?? 'General';
-    final icon = category?.icon ?? '🎯';
+    final icon = category?.icon != null ? Icons.category_rounded : Icons.track_changes_rounded;
     final color = category?.color ?? AppColors.purple;
 
     return Padding(
@@ -350,7 +321,7 @@ class _SectionHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
-                child: Text(icon, style: const TextStyle(fontSize: 18))),
+                child: Icon(icon, color: color, size: 18)),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -445,20 +416,20 @@ class _QuizCard extends StatelessWidget {
                       children: [
                         _tag(
                             quiz.ageGroup == 'preschool'
-                                ? '🧒 Pre-K'
+                                ? 'Pre-K'
                                 : quiz.ageGroup == 'primary'
-                                    ? '📚 Primary'
-                                    : '👨‍👩‍👧 All Ages',
+                                    ? 'Primary'
+                                    : 'All Ages',
                             AppColors.teal),
                         if (quiz.isCompleted) ...[
                           const SizedBox(width: 6),
-                          _tag('✅ Done', AppColors.success),
+                          _tag('Done', AppColors.success),
                         ],
                       ],
                     ),
                     if (quiz.highScore > 0) ...[
                       const SizedBox(height: 4),
-                      Text('⭐ Best: ${quiz.highScore} stars',
+                      Text('Best: ${quiz.highScore} stars',
                           style: TextStyle(
                               fontSize: 12,
                               color: AppColors.secondary

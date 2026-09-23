@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 
 import '../theme/app_theme.dart';
+import '../widgets/header_back_button.dart';
 import 'sketch_data.dart';
 import 'sketch_gallery_screen.dart';
 import 'sketch_lang.dart';
@@ -70,8 +71,9 @@ class _SketchTabScreenState extends State<SketchTabScreen> {
   @override
   Widget build(BuildContext context) {
     final lib = _library;
+    final skin = context.watch<AppProvider>().themeSkin;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: skin.background,
       body: lib == null
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -92,14 +94,22 @@ class _SketchTabScreenState extends State<SketchTabScreen> {
 
   Widget _header() {
     final t = _lang.t;
+    final skin = context.watch<AppProvider>().themeSkin;
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF330D81), Color(0xFF7700FA)],
+          colors: skin.headerGradient,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(36)),
+        boxShadow: [
+          BoxShadow(
+            color: skin.headerGradient.last.withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: SafeArea(
         bottom: false,
@@ -110,19 +120,19 @@ class _SketchTabScreenState extends State<SketchTabScreen> {
             children: [
               Row(
                 children: [
-                  const Text('✏️', style: TextStyle(fontSize: 32)),
+                  const HeaderBackButton(),
+                  const Icon(Icons.draw_rounded, color: Colors.white, size: 30),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(t('tab'), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white)),
                   ),
-                  _langSwitch(),
                 ],
               ),
               const SizedBox(height: 6),
               Text(t('heading'), style: const TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w600)),
               const SizedBox(height: 14),
               Material(
-                color: Colors.white.withValues(alpha: 0.16),
+                color: Colors.white.withValues(alpha: 0.25),
                 shape: const StadiumBorder(),
                 child: InkWell(
                   customBorder: const StadiumBorder(),
@@ -130,7 +140,7 @@ class _SketchTabScreenState extends State<SketchTabScreen> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('🖼️', style: TextStyle(fontSize: 16)),
+                      const Icon(Icons.photo_library_rounded, color: Colors.white, size: 18),
                       const SizedBox(width: 8),
                       Text(t('myDrawings'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
                     ]),
@@ -141,32 +151,6 @@ class _SketchTabScreenState extends State<SketchTabScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _langSwitch() {
-    Widget option(String code, String label) {
-      final on = _lang.value == code;
-      return Semantics(
-        button: true,
-        selected: on,
-        child: GestureDetector(
-          onTap: () => _lang.set(code),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(color: on ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(99)),
-            child: Text(label,
-                style: TextStyle(color: on ? const Color(0xFF330D81) : Colors.white70, fontWeight: FontWeight.w900, fontSize: 13)),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(border: Border.all(color: Colors.white30, width: 2), borderRadius: BorderRadius.circular(99)),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [option('en', 'EN'), option('ms', 'BM')]),
     );
   }
 
@@ -214,7 +198,10 @@ class _SketchTabScreenState extends State<SketchTabScreen> {
                 ),
                 FilledButton(
                   onPressed: () => _open(lesson),
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFF7700FA), shape: const StadiumBorder()),
+                  style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.onPrimary,
+                      shape: const StadiumBorder()),
                   child: Text(t('continue'), style: const TextStyle(fontWeight: FontWeight.w800)),
                 ),
               ],
@@ -241,10 +228,10 @@ class _SketchTabScreenState extends State<SketchTabScreen> {
                 selected: _pathId == p.id,
                 onSelected: (_) => setState(() => _pathId = p.id),
                 showCheckmark: false,
-                labelStyle: TextStyle(fontWeight: FontWeight.w800, color: _pathId == p.id ? Colors.white : AppColors.textDark),
-                selectedColor: const Color(0xFF7700FA),
+                labelStyle: TextStyle(fontWeight: FontWeight.w800, color: _pathId == p.id ? AppColors.onPrimary : AppColors.textDark),
+                selectedColor: AppColors.primary,
                 backgroundColor: Colors.white,
-                side: BorderSide(color: _pathId == p.id ? const Color(0xFF7700FA) : Colors.black12),
+                side: BorderSide(color: _pathId == p.id ? AppColors.primaryDeep : AppColors.divider),
                 shape: const StadiumBorder(),
               ),
             ),

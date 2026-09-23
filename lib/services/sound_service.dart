@@ -3,11 +3,13 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// App-wide audio: calm looping background music + soft sound effects.
+/// App-wide audio: calm looping background music + soft sound effects + spoken
+/// narration (text-to-speech).
 ///
-/// All tracks are bundled in assets/audio/ (synthesized in-house, royalty
-/// free). Music and effects can be toggled independently from the Profile
-/// screen; both preferences persist across launches.
+/// All music/SFX tracks are bundled in assets/audio/ (synthesized in-house,
+/// royalty free). Music and effects can be toggled independently from the
+/// Profile screen; both preferences persist across launches. Narration (TTS)
+/// follows the sound-effects toggle so it can be muted together with the SFX.
 class SoundService with WidgetsBindingObserver {
   SoundService._();
   static final SoundService instance = SoundService._();
@@ -18,10 +20,20 @@ class SoundService with WidgetsBindingObserver {
   static const _musicVolume = 0.35;
 
   final AudioPlayer _music = AudioPlayer(playerId: 'bgm');
+  // Dedicated, non-looping player for vocal sing-along songs. Kept separate
+  // from [_music] (which is configured to loop for ambient BGM) so songs play
+  // exactly once and emit onPlayerComplete.
+  final AudioPlayer _song = AudioPlayer(playerId: 'song');
   // Small pool so rapid taps/flips don't cut each other off.
   final List<AudioPlayer> _sfxPool =
       List.generate(3, (i) => AudioPlayer(playerId: 'sfx$i'));
   int _sfxIndex = 0;
+  // Story ambience: one loop for the scene, one for rain layered on top.
+  final AudioPlayer _ambient = AudioPlayer(playerId: 'ambient');
+  final AudioPlayer _ambientRain = AudioPlayer(playerId: 'ambientRain');
+  String? _ambientTrack;
+  bool _ambientRainOn = false;
+  static const _ambientVolume = 0.45;
   final FlutterTts _tts = FlutterTts();
   bool _ttsReady = false;
 
@@ -29,9 +41,17 @@ class SoundService with WidgetsBindingObserver {
   bool _sfxEnabled = true;
   bool _initialized = false;
   String? _currentTrack;
+  bool _songPlaying = false;
 
   bool get musicEnabled => _musicEnabled;
   bool get sfxEnabled => _sfxEnabled;
+
+  // Set by AppProvider once the persisted language is known so narration speaks
+  // in the same language as the UI. Defaults to English.
+  static String Function()? _spokenLanguageResolver;
+  static void setLanguageResolver(String Function() resolver) {
+    _spokenLanguageResolver = resolver;
+  }
 
   Future<void> init() async {
     if (_initialized) return;
@@ -45,6 +65,12 @@ class SoundService with WidgetsBindingObserver {
       for (final p in _sfxPool) {
         await p.setReleaseMode(ReleaseMode.stop);
       }
+      await _song.setReleaseMode(ReleaseMode.stop);
+      for (final p in [_ambient, _ambientRain]) {
+        await p.setReleaseMode(ReleaseMode.loop);
+        await p.setVolume(_ambientVolume);
+      }
+      await _song.setVolume(1.0);
       // Ambient category: respects the ring/silent switch and mixes politely
       // with other apps' audio (ambient implies mixWithOthers on iOS).
       await AudioPlayer.global.setAudioContext(AudioContext(
@@ -80,12 +106,54 @@ class SoundService with WidgetsBindingObserver {
     await _music.stop();
   }
 
+  // ── Sing-along songs ───────────────────────────────────────────────────────
+  // Real vocal songs (e.g. Old MacDonald, ABC song) bundled under assets/audio/
+  // WITHOUT the "bgm_" prefix used by the looping background music above.
+  // These do NOT loop — each plays once, and [onComplete] fires when finished.
+
+  Future<void> playSong(String name, {VoidCallback? onComplete}) async {
+    await init();
+    if (!_musicEnabled) return;
+    // Pause looping BGM so only the vocal song is heard.
+    try {
+      await _music.pause();
+    } catch (_) {}
+    await _song.stop();
+    try {
+      await _song.seek(Duration.zero);
+    } catch (_) {}
+    var done = false;
+    void finish() {
+      if (done) return;
+      done = true;
+      _songPlaying = false;
+      onComplete?.call();
+    }
+
+    // Attach the completion listener WITHOUT awaiting it (it can only fire once
+    // playback starts), then begin playback.
+    _song.onPlayerComplete.first.then((_) => finish()).catchError((_) {});
+    _songPlaying = true;
+    await _song.play(AssetSource('audio/$name.m4a'));
+  }
+
+  Future<void> stopSong() async {
+    try {
+      await _song.stop();
+    _songPlaying = false;
+  } catch (_) {}
+  }
+
   Future<void> setMusicEnabled(bool enabled) async {
     _musicEnabled = enabled;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kMusicPref, enabled);
     if (!enabled) {
       await _music.pause();
+      await _pauseAmbient();
+    } else if (_ambientTrack != null) {
+      // A story is open: bring its ambience back rather than the app music.
+      await _startAmbient();
     } else if (_currentTrack != null) {
       await playMusic(_currentTrack!);
     } else {
@@ -99,9 +167,61 @@ class SoundService with WidgetsBindingObserver {
     await prefs.setBool(_kSfxPref, enabled);
   }
 
+  // ── Story ambience ─────────────────────────────────────────────────────────
+  // Looping scene sound (waves, crickets, market...) while a library story is
+  // open. It stands in for the app music, so it follows the music toggle and
+  // pauses the background track while it plays.
+
+  /// Switches to ambient loop [track] (`assets/audio/amb_<track>.m4a`), with
+  /// rain layered on when [rain] is true. Same track twice is a no-op.
+  Future<void> playAmbient(String track, {bool rain = false}) async {
+    await init();
+    final changed = track != _ambientTrack || rain != _ambientRainOn;
+    _ambientTrack = track;
+    _ambientRainOn = rain;
+    if (!_musicEnabled || !changed) return;
+    await _startAmbient();
+  }
+
+  Future<void> _startAmbient() async {
+    try {
+      await _music.pause();
+      await _ambient.stop();
+      await _ambient.play(AssetSource('audio/amb_$_ambientTrack.m4a'));
+      if (_ambientRainOn) {
+        await _ambientRain.stop();
+        await _ambientRain.play(AssetSource('audio/amb_rain.m4a'));
+      } else {
+        await _ambientRain.stop();
+      }
+    } catch (_) {
+      // Ambience is decoration; never let it break the reader.
+    }
+  }
+
+  Future<void> _pauseAmbient() async {
+    try {
+      await _ambient.pause();
+      await _ambientRain.pause();
+    } catch (_) {}
+  }
+
+  /// Stops story ambience and brings the app music back.
+  Future<void> stopAmbient() async {
+    _ambientTrack = null;
+    _ambientRainOn = false;
+    try {
+      await _ambient.stop();
+      await _ambientRain.stop();
+      if (_musicEnabled && _currentTrack != null) await _music.resume();
+    } catch (_) {}
+  }
+
   // ── Sound effects ───────────────────────────────────────────────────────────
 
-  Future<void> _sfx(String name, double volume) async {
+  Future<void> _sfx(String name, double volume) => _playSfx('audio/sfx_$name.m4a', volume);
+
+  Future<void> _playSfx(String asset, double volume) async {
     if (!_sfxEnabled) return;
     await init();
     final p = _sfxPool[_sfxIndex];
@@ -109,11 +229,14 @@ class SoundService with WidgetsBindingObserver {
     try {
       await p.stop();
       await p.setVolume(volume);
-      await p.play(AssetSource('audio/sfx_$name.m4a'));
+      await p.play(AssetSource(asset));
     } catch (_) {
       // Never let a sound glitch break gameplay.
     }
   }
+
+  /// A tap sound from the story library (`assets/audio/story_<name>.m4a`).
+  Future<void> storySfx(String name) => _playSfx('audio/story_$name.m4a', 0.8);
 
   Future<void> tap() => _sfx('tap', 0.35);
   Future<void> correct() => _sfx('correct', 0.7);
@@ -139,21 +262,94 @@ class SoundService with WidgetsBindingObserver {
     }
   }
 
-  /// Speaks a line out loud (kid-friendly voice). Follows the sound-effects
-  /// toggle. Emoji and other symbols are stripped before speaking.
-  Future<void> speak(String text) async {
-    if (!_sfxEnabled) return;
-    final clean = text
-        .replaceAll(RegExp(r'[^\x20-\x7E]'), ' ') // drop emoji/symbols
+  /// Strips emoji/symbols so the TTS engine doesn't try to "read" them, and
+  /// collapses whitespace.
+  String _clean(String text) {
+    return text
+        .replaceAll(RegExp(r'[^ -]'), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
+  }
+
+  String _currentLanguage() {
+    try {
+      return _spokenLanguageResolver?.call() ?? 'en';
+    } catch (_) {
+      return 'en';
+    }
+  }
+
+  /// Speaks one line out loud (kid-friendly voice) in the given language.
+  /// Follows the sound-effects toggle so narration can be muted from Profile.
+  Future<void> speakLine(String text, {bool ms = false}) async {
+    if (!_sfxEnabled) return;
+    final clean = _clean(text);
     if (clean.isEmpty) return;
     await _initTts();
     try {
+      await _tts.setLanguage(ms ? 'ms-MY' : 'en-US');
       await _tts.stop();
       await _tts.speak(clean);
     } catch (_) {
       // Never let narration break playback.
+    }
+  }
+
+  /// Like [speakLine], but completes only once the line has been spoken, so a
+  /// caller can chain sounds (letter by letter, word by word). Capped by
+  /// [timeout] so a missing TTS engine can never stall the caller.
+  Future<void> speakAndWait(String text,
+      {bool ms = false, double? rate, Duration timeout = const Duration(seconds: 3)}) async {
+    if (!_sfxEnabled) return;
+    final clean = _clean(text);
+    if (clean.isEmpty) return;
+    await _initTts();
+    try {
+      await _tts.setLanguage(ms ? 'ms-MY' : 'en-US');
+      if (rate != null) await _tts.setSpeechRate(rate);
+      await _tts.stop();
+      await _tts.awaitSpeakCompletion(true);
+      await _tts.speak(clean).timeout(timeout, onTimeout: () => null);
+    } catch (_) {
+      // Never let narration break playback.
+    } finally {
+      try {
+        await _tts.awaitSpeakCompletion(false);
+        if (rate != null) await _tts.setSpeechRate(0.45);
+      } catch (_) {}
+    }
+  }
+
+  /// Convenience: speak the right-language variant of a bilingual pair.
+  /// [en] is read when the app language is English, [ms] when Malay.
+  Future<void> speakBilingual(String en, String ms) async {
+    final lang = _currentLanguage();
+    await speakLine(lang == 'ms' ? ms : en, ms: lang == 'ms');
+  }
+
+  /// Reads a bilingual line. With a single [text] it is read as-is (English);
+  /// with a [ms] variant the active UI language selects which to speak.
+  Future<void> speak(String text, [String ms = '']) async {
+    if (ms.isEmpty) {
+      await speakLine(text);
+    } else {
+      await speakBilingual(text, ms);
+    }
+  }
+
+  /// Reads a child-friendly answer verdict ("Correct!" / "Try again!").
+  Future<void> speakVerdict(bool correct, {String? correctAnswer, String? ms}) async {
+    if (correct) {
+      await speakBilingual('Correct! Well done!', 'Betul! Tahniah!');
+    } else {
+      final en = correctAnswer != null
+          ? 'Not quite! The answer is $correctAnswer.'
+          : 'Not quite! Try again!';
+      final msText = ms ??
+          (correctAnswer != null
+              ? 'Kurang tepat! Jawapan ialah $correctAnswer.'
+              : 'Kurang tepat! Cuba lagi!');
+      await speakBilingual(en, msText);
     }
   }
 
@@ -170,10 +366,17 @@ class SoundService with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       _music.pause();
-    } else if (state == AppLifecycleState.resumed &&
-        _musicEnabled &&
-        _currentTrack != null) {
-      _music.resume();
+      if (_songPlaying) _song.pause();
+      _pauseAmbient();
+    } else if (state == AppLifecycleState.resumed) {
+      if (_songPlaying) {
+        _song.resume();
+      } else if (_musicEnabled && _ambientTrack != null) {
+        _ambient.resume();
+        if (_ambientRainOn) _ambientRain.resume();
+      } else if (_musicEnabled && _currentTrack != null) {
+        _music.resume();
+      }
     }
   }
 }

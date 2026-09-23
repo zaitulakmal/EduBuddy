@@ -5,6 +5,9 @@ import '../../providers/app_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../models/worksheet_model.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../widgets/page_theme.dart';
+import '../../widgets/reward_overlay.dart';
 
 class WorksheetsScreen extends StatefulWidget {
   const WorksheetsScreen({super.key});
@@ -14,6 +17,27 @@ class WorksheetsScreen extends StatefulWidget {
 }
 
 class _WorksheetsScreenState extends State<WorksheetsScreen> {
+  /// Marks a worksheet done, then celebrates any badge it earned.
+  Future<void> _markDone(
+      BuildContext context, AppProvider provider, int id) async {
+    try {
+      await provider.markWorksheetDone(id);
+    } catch (_) {
+      return;
+    }
+    final badges = List.of(provider.newlyEarnedBadges);
+    if (!mounted || badges.isEmpty) return;
+    if (!context.mounted) return;
+    await showRewardSheet(
+      context,
+      title: provider.t('New badge!', 'Lencana baharu!'),
+      badges: badges,
+      buddy: buddyVariantFromId(provider.userAvatar),
+      hat: provider.buddyHat,
+      accessory: provider.buddyAccessory,
+    );
+  }
+
   String _selectedGrade = 'All';
 
   final List<String> _grades = ['All', 'Pre-school', 'Year 1', 'Year 2', 'Year 3'];
@@ -46,61 +70,11 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
 
   Widget _buildAppBar() {
     return SliverToBoxAdapter(
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF00897B), Color(0xFF4DB6AC)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-            child: Row(
-              children: [
-                BouncyButton(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white, size: 20),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text('📝', style: TextStyle(fontSize: 32)),
-                const SizedBox(width: 12),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Worksheets',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'Practice & Learn!',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+      child: FunkyHeader(
+        palette: PagePalette.worksheets,
+        title: 'Worksheets',
+        subtitle: 'Practice & Learn!',
+        onBack: () => Navigator.pop(context),
       ),
     );
   }
@@ -127,13 +101,13 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
                   decoration: BoxDecoration(
                     gradient: selected
                         ? const LinearGradient(
-                            colors: [Color(0xFF00897B), Color(0xFF4DB6AC)])
+                            colors: [AppColors.primaryDeep, AppColors.secondary])
                         : null,
                     color: selected ? null : Colors.white,
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
+                        color: Colors.black.withValues(alpha: 0.06),
                         blurRadius: 6,
                         offset: const Offset(0, 3),
                       ),
@@ -145,7 +119,7 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color:
-                          selected ? Colors.white : const Color(0xFF00897B),
+                          selected ? Colors.white : AppColors.primaryDeep,
                     ),
                   ),
                 ),
@@ -167,14 +141,14 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF00897B).withOpacity(0.08),
+            color: AppColors.primaryDeep.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-                color: const Color(0xFF00897B).withOpacity(0.3)),
+                color: AppColors.primaryDeep.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
-              const Text('📊', style: TextStyle(fontSize: 28)),
+              const Icon(Icons.bar_chart_rounded, color: AppColors.primaryDeep, size: 28),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -182,10 +156,10 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
                   children: [
                     Text(
                       '$done of $total worksheets completed',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF00897B),
+                        color: AppColors.primaryDeep,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -196,7 +170,7 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
                         minHeight: 8,
                         backgroundColor: Colors.grey.shade200,
                         valueColor: const AlwaysStoppedAnimation(
-                            Color(0xFF00897B)),
+                            AppColors.primaryDeep),
                       ),
                     ),
                   ],
@@ -226,7 +200,7 @@ class _WorksheetsScreenState extends State<WorksheetsScreen> {
                     child: _WorksheetCard(
                       worksheet: worksheets[i],
                       onMarkDone: () =>
-                          provider.markWorksheetDone(worksheets[i].id!),
+                          _markDone(context, provider, worksheets[i].id!),
                     ),
                   ),
                 ),
@@ -259,13 +233,13 @@ class _WorksheetCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
         border: worksheet.isCompleted
-            ? Border.all(color: AppColors.success.withOpacity(0.5))
+            ? Border.all(color: AppColors.success.withValues(alpha: 0.5))
             : null,
       ),
       child: Row(
@@ -275,15 +249,17 @@ class _WorksheetCard extends StatelessWidget {
             height: 52,
             decoration: BoxDecoration(
               color: worksheet.isCompleted
-                  ? AppColors.success.withOpacity(0.12)
-                  : const Color(0xFF00897B).withOpacity(0.1),
+                  ? AppColors.success.withValues(alpha: 0.12)
+                  : AppColors.primaryDeep.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Center(
-              child: Text(
-                worksheet.isCompleted ? '✅' : worksheet.emoji,
-                style: const TextStyle(fontSize: 28),
-              ),
+              child: worksheet.isCompleted
+                  ? const Icon(Icons.check_rounded, color: AppColors.success, size: 28)
+                  : Text(
+                      worksheet.emoji,
+                      style: const TextStyle(fontSize: 28),
+                    ),
             ),
           ),
           const SizedBox(width: 14),
@@ -307,7 +283,7 @@ class _WorksheetCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    _tag(worksheet.subject, const Color(0xFF00897B)),
+                    _tag(worksheet.subject, AppColors.primaryDeep),
                     const SizedBox(width: 6),
                     _tag(worksheet.grade, AppColors.blue),
                   ],
@@ -323,17 +299,24 @@ class _WorksheetCard extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF00897B), Color(0xFF4DB6AC)],
+                    colors: [AppColors.primaryDeep, AppColors.secondary],
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'Done ✓',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_rounded, color: Colors.white, size: 14),
+                    SizedBox(width: 4),
+                    Text(
+                      'Done',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             )
@@ -349,7 +332,7 @@ class _WorksheetCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(

@@ -8,7 +8,6 @@ import 'games/word_builder_screen.dart';
 import 'quizzes/quizzes_screen.dart';
 import 'storybooks/storybooks_screen.dart';
 import 'profile/profile_screen.dart';
-import '../sketch/sketch_tab_screen.dart';
 
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
@@ -31,7 +30,6 @@ class _MainNavState extends State<MainNav> {
     WordBuilderScreen(),
     QuizzesScreen(),
     StorybooksScreen(),
-    SketchTabScreen(),
     ProfileScreen(),
   ];
 
@@ -47,7 +45,7 @@ class _MainNavState extends State<MainNav> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 20,
               offset: const Offset(0, -4),
             ),
@@ -65,16 +63,10 @@ class _MainNavState extends State<MainNav> {
             type: BottomNavigationBarType.fixed,
             backgroundColor: Colors.white,
             elevation: 0,
-            selectedItemColor: AppColors.primary,
+            selectedItemColor: AppColors.primaryDeep,
             unselectedItemColor: AppColors.textMuted,
-            selectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 11,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 11,
-            ),
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
             items: _buildItems(),
           ),
         ),
@@ -85,12 +77,11 @@ class _MainNavState extends State<MainNav> {
   List<BottomNavigationBarItem> _buildItems() {
     final t = context.watch<AppProvider>().t;
     final items = [
-      ('🏠', t('Home', 'Utama')),
-      ('🔤', t('Spelling', 'Ejaan')),
-      ('🧩', t('Quizzes', 'Kuiz')),
-      ('📖', t('Stories', 'Cerita')),
-      ('✏️', t('Draw', 'Lukis')),
-      ('👤', t('Profile', 'Profil')),
+      (Icons.home_rounded, t('Home', 'Utama')),
+      (Icons.spellcheck_rounded, t('Spelling', 'Ejaan')),
+      (Icons.psychology_rounded, t('Quizzes', 'Kuiz')),
+      (Icons.menu_book_rounded, t('Stories', 'Cerita')),
+      (Icons.person_rounded, t('Profile', 'Profil')),
     ];
 
     return items.asMap().entries.map((entry) {
@@ -103,12 +94,13 @@ class _MainNavState extends State<MainNav> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary.withOpacity(0.12) : null,
+            color: isSelected ? AppColors.primarySoft : null,
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Text(
+          child: Icon(
             item.$1,
-            style: TextStyle(fontSize: isSelected ? 24 : 22),
+            size: isSelected ? 26 : 22,
+            color: isSelected ? AppColors.primaryDeep : AppColors.textMuted,
           ),
         ),
         label: item.$2,

@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/bouncy_button.dart';
+import '../../widgets/buddy_mascot.dart';
+import '../../widgets/page_theme.dart';
+import 'package:provider/provider.dart';
+import '../../providers/app_provider.dart';
 import '../../services/sound_service.dart';
+import '../../widgets/reward_overlay.dart';
 
 // Word associations for letters
 const Map<String, String> _letterWords = {
@@ -87,14 +92,40 @@ class _TracingCanvasScreenState extends State<TracingCanvasScreen>
     super.dispose();
   }
 
+  /// Paid once per letter. Clearing and re-tracing the same letter is good
+  /// practice but not a second reward.
+  bool _awarded = false;
+
   void _celebrate() {
     if (_showCelebration) return;
     setState(() => _showCelebration = true);
     SoundService.instance.complete();
     _confettiController.play();
+    _award();
     Future.delayed(const Duration(milliseconds: 3200), () {
       if (mounted) setState(() => _showCelebration = false);
     });
+  }
+
+  /// Pays for a traced letter. Tracing earned nothing before this, so the
+  /// work a child did here fed neither stars nor badges.
+  Future<void> _award() async {
+    if (_awarded) return;
+    _awarded = true;
+    final provider = context.read<AppProvider>();
+    try {
+      await provider.markCreativeDone('tracing');
+    } catch (_) {
+      return;
+    }
+    final badges = List.of(provider.newlyEarnedBadges);
+    if (!mounted || badges.isEmpty) return;
+    // The screen has its own celebration, so only interrupt for a badge.
+    await showRewardSheet(
+      context,
+      title: provider.t('New badge!', 'Lencana baharu!'),
+      badges: badges,
+    );
   }
 
   void _clearCanvas() {
@@ -135,18 +166,29 @@ class _TracingCanvasScreenState extends State<TracingCanvasScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: _gradient[0],
+        backgroundColor: PagePalette.tracing.accent,
+        foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          '"${widget.character}" is for $_word',
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: 18,
-          ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BuddyMascot(size: 36, variant: PagePalette.tracing.buddy, animation: PagePalette.tracing.anim),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '"${widget.character}" is for $_word',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
@@ -215,7 +257,7 @@ class _TracingCanvasScreenState extends State<TracingCanvasScreen>
                 child: const Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('🎉', style: TextStyle(fontSize: 56)),
+                    Icon(Icons.celebration_rounded, color: Colors.white, size: 56),
                     SizedBox(height: 8),
                     Text(
                       'Amazing!',
@@ -489,7 +531,7 @@ class _TracingCanvasScreenState extends State<TracingCanvasScreen>
               ),
               child: Center(
                 child: Text(
-                  _strokes.isEmpty ? '✏️  Start drawing!' : '🎉  Done!',
+                  _strokes.isEmpty ? 'Start drawing!' : 'Done!',
                   style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w900,
