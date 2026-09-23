@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../theme/app_theme.dart';
 import 'share_image.dart';
@@ -9,6 +10,7 @@ import 'sketch_lang.dart';
 import 'sketch_lesson_screen.dart';
 import 'sketch_store.dart';
 import 'sketch_widgets.dart';
+import '../providers/app_provider.dart';
 
 /// "My drawings": unfinished drawings to continue, then finished ones to keep or share.
 class SketchGalleryScreen extends StatefulWidget {
@@ -73,11 +75,12 @@ class _SketchGalleryScreenState extends State<SketchGalleryScreen> {
     String date(DateTime d) => '${d.day}/${d.month}/${d.year}';
     final lib = _library;
     final drawings = _drawings;
+    final skin = context.watch<AppProvider>().themeSkin;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: skin.background,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: skin.background,
         title: Text(t('myDrawings'), style: const TextStyle(fontWeight: FontWeight.w900)),
       ),
       body: lib == null || drawings == null
@@ -102,7 +105,8 @@ class _SketchGalleryScreenState extends State<SketchGalleryScreen> {
                                 FilledButton(
                                   onPressed: () => _continue(lesson),
                                   style: FilledButton.styleFrom(
-                                    backgroundColor: const Color(0xFF7700FA),
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: AppColors.onPrimary,
                                     shape: const StadiumBorder(),
                                     visualDensity: VisualDensity.compact,
                                   ),
@@ -175,7 +179,7 @@ class _SketchGalleryScreenState extends State<SketchGalleryScreen> {
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Text('🖼️', style: TextStyle(fontSize: 48)),
+            const Icon(Icons.photo_library_rounded, size: 48, color: AppColors.textMuted),
             const SizedBox(height: 12),
             Text(t('emptyTitle'), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.textDark)),
             const SizedBox(height: 8),
@@ -209,7 +213,7 @@ class _Tile extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: dashed ? Border.all(color: const Color(0xFFB388FF), width: 2) : null,
+              border: dashed ? Border.all(color: AppColors.violet, width: 2) : null,
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 14, offset: const Offset(0, 6))],
             ),
             child: ClipRRect(

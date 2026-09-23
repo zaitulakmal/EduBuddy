@@ -26,6 +26,22 @@ Decisions confirmed with Zaitul:
   Existing tables untouched. `SketchStore` also runs CREATE TABLE IF NOT EXISTS on first use,
   in case a device's DB already reports a newer version without them. PNGs live in `<documents>/sketches/`.
 
+### Styling follows the app, not SketchStep
+The port arrived in SketchStep's dark violet. On 2026-09-23 it was pulled onto EduBuddy's
+palette: `themeSkin.background` and `themeSkin.headerGradient` (so the Draw screens change with
+the skin the child buys in the star shop), `AppColors` for every other surface, `Icons.*_rounded`
+in place of the ✏️/🖼️ emoji. The lesson screen is light now, and the paper is separated from the
+background by a `divider` border plus a soft shadow instead of a dark surround.
+
+Two colours are deliberately NOT themed, because they are functional rather than decorative:
+- The HB / 2B / 6B leads in `sketch_widgets.dart` and the dock — they show real graphite darkness.
+- The guide line (`sketchViolet` in `sketch_painters.dart`) stays violet, because the lesson copy
+  says "Trace the violet line" / "Surih garisan ungu". Only its shade moved to `AppColors.punchViolet`.
+
+Watch the light-on-light traps when editing these screens: the widgets were written for a dark
+surround, so `paperColor` was a *foreground* colour. Selected tool buttons and the EN/BM pill both
+had to be re-inked to `AppColors.onPrimary` on `primarySoft` to stay readable.
+
 ### Lessons are generated, do not edit the JSON
 `assets/data/sketch_lessons.json` is exported from SketchStep, which is the single source of truth
 for lesson content. To change or add lessons, edit them in SketchStep, then in that repo run:

@@ -4,8 +4,11 @@ import 'package:flutter/rendering.dart';
 
 import 'pencil.dart';
 import 'sketch_data.dart';
+import '../theme/app_theme.dart';
 
-const sketchViolet = Color(0xFF7700FA);
+// Stays violet on purpose: the lesson copy says "Trace the violet line" /
+// "Surih garisan ungu". Only the shade is pulled into the app palette.
+const sketchViolet = AppColors.punchViolet;
 
 void _drawPolylines(Canvas c, SketchShape shape, Paint paint) => c.drawPath(shape.path, paint);
 
@@ -109,7 +112,7 @@ class GuidePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeWidth = 1.4
-      ..color = const Color(0xFFB8ACDC).withValues(alpha: 0.55);
+      ..color = AppColors.violet.withValues(alpha: 0.45);
     for (final s in lesson.steps.take(step)) {
       if (s.kind == StepKind.shade) continue;
       for (final shape in s.shapes) {
