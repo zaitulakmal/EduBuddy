@@ -8,7 +8,6 @@ import 'games/word_builder_screen.dart';
 import 'quizzes/quizzes_screen.dart';
 import 'storybooks/storybooks_screen.dart';
 import 'profile/profile_screen.dart';
-import '../sketch/sketch_tab_screen.dart';
 
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
@@ -31,7 +30,6 @@ class _MainNavState extends State<MainNav> {
     WordBuilderScreen(),
     QuizzesScreen(),
     StorybooksScreen(),
-    SketchTabScreen(),
     ProfileScreen(),
   ];
 
@@ -83,7 +81,6 @@ class _MainNavState extends State<MainNav> {
       (Icons.spellcheck_rounded, t('Spelling', 'Ejaan')),
       (Icons.psychology_rounded, t('Quizzes', 'Kuiz')),
       (Icons.menu_book_rounded, t('Stories', 'Cerita')),
-      (Icons.draw_rounded, t('Draw', 'Lukis')),
       (Icons.person_rounded, t('Profile', 'Profil')),
     ];
 

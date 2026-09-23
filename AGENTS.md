@@ -1,15 +1,22 @@
 # EduBuddy — project contract
 
-Flutter learning app for kids: Home, Spelling, Quizzes, Stories, Draw/Lukis, Profile.
+Flutter learning app for kids: Home, Spelling, Quizzes, Stories, Profile.
+Drawing lessons (Draw/Lukis) live under the Drawing Studio card in Home, not in the nav bar.
 SQLite via sqflite (`lib/db/database_helper.dart`), state via provider. App is portrait-only.
 
 ## Draw tab ("Lukis") — added 2026-09-21
 A native Flutter port of SketchStep (https://sketchstep.vercel.app, repo zaitulakmal/sketchstep).
 Decisions confirmed with Zaitul:
 - Rewritten in Flutter (not a WebView). Code lives in `lib/sketch/`.
-- New bottom tab "Draw"/"Lukis" between Stories and Profile (`lib/screens/main_nav.dart`),
-  six tabs in all. The 1.0.4 redesign replaced the emoji labels with `Icons.*_rounded`, so the
-  tab uses `Icons.draw_rounded` rather than the pencil emoji the port shipped with.
+- No bottom tab. Zaitul changed this on 2026-09-23: the lessons replace the free-draw
+  Drawing Studio rather than sitting beside it. The "Drawing Studio"/"Studio Lukisan" card in
+  Home's creative activities row, and the `drawing` stop in the journey, both push
+  `SketchTabScreen`. The bottom nav stays at five tabs.
+- `lib/screens/drawing/drawing_studio_screen.dart` (the free-draw canvas) is therefore
+  unreachable. It is kept in the tree, not deleted, in case the free canvas comes back.
+- `SketchTabScreen` was written as a tab, so it carries no AppBar. It now renders
+  `HeaderBackButton` in its gradient header, which draws nothing when there is no route to
+  pop — the screen works both ways.
 - Tab has an EN/BM switch. It follows and changes the app-wide language (AppProvider
   `selectedLanguage`), so there is one language setting (`sketch_lang.dart`).
 - Saving images to Photos uses `share_plus` (system share sheet).
@@ -34,6 +41,7 @@ for lesson content. To change or add lessons, edit them in SketchStep, then in t
 ### Tests
 - `flutter test` — unit tests incl. `test/sketch_test.dart`.
 - On a simulator: `flutter drive --driver=test_driver/integration_test.dart --target=integration_test/sketch_flow_test.dart -d <device>`
-  (set SCREENSHOT_DIR to keep screenshots).
+  (set SCREENSHOT_DIR to keep screenshots). The test reaches the lessons by scrolling Home to
+  the Drawing Studio card, so it breaks if that card is renamed.
 
 ## Open questions

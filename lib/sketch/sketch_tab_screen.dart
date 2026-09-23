@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 
 import '../theme/app_theme.dart';
+import '../widgets/header_back_button.dart';
 import 'sketch_data.dart';
 import 'sketch_gallery_screen.dart';
 import 'sketch_lang.dart';
@@ -110,6 +111,7 @@ class _SketchTabScreenState extends State<SketchTabScreen> {
             children: [
               Row(
                 children: [
+                  const HeaderBackButton(),
                   const Text('✏️', style: TextStyle(fontSize: 32)),
                   const SizedBox(width: 12),
                   Expanded(

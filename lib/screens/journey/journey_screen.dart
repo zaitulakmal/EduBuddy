@@ -11,7 +11,6 @@ import '../../widgets/buddy_mascot.dart';
 import '../../widgets/header_back_button.dart';
 import '../coloring/coloring_screen.dart';
 import '../counting/counting_screen.dart';
-import '../drawing/drawing_studio_screen.dart';
 import '../games/math_blast_screen.dart';
 import '../games/memory_match_screen.dart';
 import '../games/word_builder_screen.dart';
@@ -19,6 +18,7 @@ import '../quizzes/quizzes_screen.dart';
 import '../storybooks/storybooks_screen.dart';
 import '../tracing/tracing_screen.dart';
 import '../worksheets/worksheets_screen.dart';
+import '../../sketch/sketch_tab_screen.dart';
 
 /// One step on the journey.
 class _Stop {
@@ -212,7 +212,7 @@ class _PathNode extends StatelessWidget {
       'memory' => const MemoryMatchScreen(),
       'count' => const CountingScreen(),
       'coloring' => const ColoringScreen(),
-      'drawing' => const DrawingStudioScreen(),
+      'drawing' => const SketchTabScreen(),
       'tracing' => const TracingScreen(),
       _ => const QuizzesScreen(),
     };

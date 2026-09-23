@@ -11,7 +11,6 @@ import '../quizzes/quizzes_screen.dart';
 import '../storybooks/storybooks_screen.dart';
 import '../worksheets/worksheets_screen.dart';
 import '../tracing/tracing_screen.dart';
-import '../drawing/drawing_studio_screen.dart';
 import '../coloring/coloring_screen.dart';
 import '../counting/counting_screen.dart';
 import '../games/math_blast_screen.dart';
@@ -23,6 +22,7 @@ import '../journey/journey_screen.dart';
 import '../shop/shop_screen.dart';
 import '../../widgets/reward_overlay.dart';
 import '../../widgets/streak_chip.dart';
+import '../../sketch/sketch_tab_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -330,10 +330,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final activities = [
       _CreativeItem(
         title: provider.t('Drawing\nStudio', 'Studio\nLukisan'),
-        subtitle: provider.t('Free draw!', 'Lukis bebas!'),
+        subtitle: provider.t('75 lessons!', '75 pelajaran!'),
         gradient: AppColors.gradients[0],
         icon: Icons.brush_rounded,
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DrawingStudioScreen())),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SketchTabScreen())),
       ),
       _CreativeItem(
         title: provider.t('Coloring\nBook', 'Buku\nMewarna'),
