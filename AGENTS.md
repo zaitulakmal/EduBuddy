@@ -58,6 +58,10 @@ for lesson content. To change or add lessons, edit them in SketchStep, then in t
 
 ### Tests
 - `flutter test` — unit tests incl. `test/sketch_test.dart`.
+- `test/migration_test.dart` covers the v9 upgrade for the sketch tables. It checks the tables
+  through `DatabaseHelper` only, never `SketchStore`: the store's own CREATE TABLE IF NOT EXISTS
+  would mask a broken migration. Verified by mutation — putting the block back at `oldVersion < 6`
+  makes those tests fail.
 - On a simulator: `flutter drive --driver=test_driver/integration_test.dart --target=integration_test/sketch_flow_test.dart -d <device>`
   (set SCREENSHOT_DIR to keep screenshots). The test reaches the lessons by scrolling Home to
   the Drawing Studio card, so it breaks if that card is renamed.

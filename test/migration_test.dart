@@ -106,6 +106,31 @@ Future<void> _createV5Database({
   await db.close();
 }
 
+/// Winds a freshly migrated database back to the shape a 1.0.5 phone carries:
+/// schema version 9, and no sketch tables.
+///
+/// Building v9 by hand would mean transcribing the whole schema, so this takes
+/// the database the helper itself produces and removes exactly what the Draw
+/// tab added. Reopening it then runs `_onUpgrade` with `oldVersion` 9, which is
+/// the path every existing install takes and the one no other test covers.
+Future<void> _windBackToV9() async {
+  await _createV5Database(totalStars: 42);
+  final db = await _db.database; // migrates all the way to the current version
+
+  for (final t in const ['sketch_drawings', 'sketch_drafts', 'sketch_progress']) {
+    await db.execute('DROP TABLE IF EXISTS $t');
+  }
+  await db.execute('PRAGMA user_version = 9');
+  await _db.close();
+}
+
+Future<Set<String>> _tables() async {
+  final db = await _db.database;
+  return (await db.rawQuery("SELECT name FROM sqlite_master WHERE type = 'table'"))
+      .map((r) => r['name'] as String)
+      .toSet();
+}
+
 void main() {
   setUpAll(() async {
     sqfliteFfiInit();
@@ -216,5 +241,66 @@ void main() {
 
     expect(badges, hasLength(firstCount));
     expect(await _db.badgeProgress(), isNotEmpty);
+  });
+
+  // ── The Draw tab's tables, added at v10 ───────────────────────────────────
+  //
+  // These deliberately go through DatabaseHelper alone. SketchStore runs its
+  // own CREATE TABLE IF NOT EXISTS on first use, so touching it here would hide
+  // a broken migration behind that fallback instead of proving the upgrade.
+
+  test('a v9 install gets the sketch tables from the upgrade itself', () async {
+    await _windBackToV9();
+
+    expect(
+      await _tables(),
+      containsAll(['sketch_drawings', 'sketch_drafts', 'sketch_progress']),
+      reason: 'the Draw tab was ported against v6, but 6-9 were already taken '
+          'by the 1.0.5 line — if its block is not at 10, oldVersion < 6 never '
+          'fires for these users and the tables are silently never created',
+    );
+  });
+
+  test('the upgraded sketch tables have the columns the Draw code writes',
+      () async {
+    await _windBackToV9();
+    final db = await _db.database;
+
+    // A table can exist and still be the wrong shape, so write the real rows.
+    await db.insert('sketch_drawings', {
+      'id': 'd1',
+      'lesson_id': 'fish',
+      'created_at': 1,
+      'score': 88,
+      'stars': 3,
+      'image_path': '/tmp/d1.png',
+    });
+    await db.insert('sketch_drafts', {
+      'lesson_id': 'snail',
+      'step': 2,
+      'scores': '[90,80]',
+      'strokes': '[]',
+      'updated_at': 2,
+      'image_path': null,
+    });
+    await db.insert('sketch_progress', {
+      'lesson_id': 'fish',
+      'stars': 3,
+      'best': 88,
+    });
+
+    expect((await db.query('sketch_drawings')).single['score'], 88);
+    expect((await db.query('sketch_drafts')).single['step'], 2);
+    expect((await db.query('sketch_progress')).single['best'], 88);
+  });
+
+  test('upgrading a v9 install leaves the rest of the database alone', () async {
+    await _windBackToV9();
+
+    final profile = await _db.getUserProfile();
+    expect(profile?['name'], 'Aisyah');
+    expect(profile?['total_stars'], 42,
+        reason: 'adding the Draw tables must not disturb a child\'s progress');
+    expect(await _tables(), containsAll(['stickers', 'game_levels', 'unlocks']));
   });
 }
