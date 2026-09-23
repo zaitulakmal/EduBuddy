@@ -38,7 +38,7 @@ class DatabaseHelper {
     final path = join(await getDatabasesPath(), databaseName);
     return openDatabase(
       path,
-      version: 9,
+      version: 10,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -73,6 +73,43 @@ class DatabaseHelper {
     if (oldVersion < 9) {
       await _migrateToV9(db);
     }
+    // The Draw tab landed after the 1.0.5 release line had already taken
+    // versions 6-9, so its tables migrate at 10 rather than the 6 the port
+    // was written against.
+    if (oldVersion < 10) {
+      await createSketchTables(db);
+    }
+  }
+
+  /// Tables for the Draw tab (lib/sketch). Images are PNG files on disk; rows keep their paths.
+  static Future<void> createSketchTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sketch_drawings (
+        id TEXT PRIMARY KEY,
+        lesson_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        score INTEGER NOT NULL,
+        stars INTEGER NOT NULL,
+        image_path TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sketch_drafts (
+        lesson_id TEXT PRIMARY KEY,
+        step INTEGER NOT NULL,
+        scores TEXT NOT NULL,
+        strokes TEXT NOT NULL,
+        updated_at INTEGER NOT NULL,
+        image_path TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sketch_progress (
+        lesson_id TEXT PRIMARY KEY,
+        stars INTEGER NOT NULL,
+        best INTEGER NOT NULL
+      )
+    ''');
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -217,6 +254,7 @@ class DatabaseHelper {
 
     await _createProgressionTables(db);
     await _createStickerTable(db);
+    await createSketchTables(db);
     await _seedData(db);
   }
 
