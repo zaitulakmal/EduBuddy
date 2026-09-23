@@ -17,8 +17,10 @@ Decisions confirmed with Zaitul:
 - `SketchTabScreen` was written as a tab, so it carries no AppBar. It now renders
   `HeaderBackButton` in its gradient header, which draws nothing when there is no route to
   pop — the screen works both ways.
-- Tab has an EN/BM switch. It follows and changes the app-wide language (AppProvider
-  `selectedLanguage`), so there is one language setting (`sketch_lang.dart`).
+- No language switch of its own. The port shipped an EN/BM toggle in the header; it was removed
+  on 2026-09-23 because Profile already has the app-wide toggle and two controls for one setting
+  is a trap. `SketchLang` still mirrors `AppProvider.selectedLanguage` (`_sync`), so the Draw
+  screens follow whatever Profile is set to. `SketchLang.set()` is now unused but kept as API.
 - Saving images to Photos uses `share_plus` (system share sheet).
 - SQLite v10 adds `sketch_drawings`, `sketch_drafts`, `sketch_progress`. The port was written
   against v6, but the 1.0.5 release line had already claimed 6-9 (v6 quiz migration, sticker

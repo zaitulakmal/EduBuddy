@@ -126,7 +126,6 @@ class _SketchTabScreenState extends State<SketchTabScreen> {
                   Expanded(
                     child: Text(t('tab'), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.white)),
                   ),
-                  _langSwitch(),
                 ],
               ),
               const SizedBox(height: 6),
@@ -152,32 +151,6 @@ class _SketchTabScreenState extends State<SketchTabScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _langSwitch() {
-    Widget option(String code, String label) {
-      final on = _lang.value == code;
-      return Semantics(
-        button: true,
-        selected: on,
-        child: GestureDetector(
-          onTap: () => _lang.set(code),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(color: on ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(99)),
-            child: Text(label,
-                style: TextStyle(color: on ? AppColors.onPrimary : Colors.white70, fontWeight: FontWeight.w900, fontSize: 13)),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(border: Border.all(color: Colors.white30, width: 2), borderRadius: BorderRadius.circular(99)),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [option('en', 'EN'), option('ms', 'BM')]),
     );
   }
 
