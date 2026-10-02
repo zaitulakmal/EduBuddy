@@ -80,6 +80,7 @@ dependencies {
 //   flutter build appbundle --release
 //   cd android && ./gradlew publishReleaseBundle          # -> internal track
 //   cd android && ./gradlew publishReleaseBundle -Ptrack=production
+//   ... -PreleaseStatus=completed   # rolls out instead of landing as a draft
 //
 // The first production release must still be created by hand in Play Console;
 // the API cannot bootstrap a track that has never been live. See
@@ -92,6 +93,15 @@ play {
     // accident is not a mistake you can take back.
     track.set(providers.gradleProperty("track").getOrElse("internal"))
     // Uploads land as drafts until you explicitly roll them out in Console.
-    releaseStatus.set(com.github.triplet.gradle.androidpublisher.ReleaseStatus.DRAFT)
+    // -PreleaseStatus=completed goes live on upload instead; the default stays
+    // DRAFT so that only ever happens when it is asked for by name.
+    releaseStatus.set(
+        when (providers.gradleProperty("releaseStatus").getOrElse("draft").lowercase()) {
+            "completed" -> com.github.triplet.gradle.androidpublisher.ReleaseStatus.COMPLETED
+            "inprogress" -> com.github.triplet.gradle.androidpublisher.ReleaseStatus.IN_PROGRESS
+            "halted" -> com.github.triplet.gradle.androidpublisher.ReleaseStatus.HALTED
+            else -> com.github.triplet.gradle.androidpublisher.ReleaseStatus.DRAFT
+        }
+    )
     defaultToAppBundles.set(true)
 }
