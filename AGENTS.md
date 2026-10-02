@@ -12,8 +12,9 @@ Decisions confirmed with Zaitul:
   Drawing Studio rather than sitting beside it. The "Drawing Studio"/"Studio Lukisan" card in
   Home's creative activities row, and the `drawing` stop in the journey, both push
   `SketchTabScreen`. The bottom nav stays at five tabs.
-- `lib/screens/drawing/drawing_studio_screen.dart` (the free-draw canvas) is therefore
-  unreachable. It is kept in the tree, not deleted, in case the free canvas comes back.
+- The free-draw canvas it replaced (`lib/screens/drawing/drawing_studio_screen.dart`) was
+  deleted on 2026-09-23, once Zaitul confirmed the lessons stand in for it. Recover it from
+  history if free drawing is ever wanted back; nothing else referenced it.
 - `SketchTabScreen` was written as a tab, so it carries no AppBar. It now renders
   `HeaderBackButton` in its gradient header, which draws nothing when there is no route to
   pop — the screen works both ways.
